@@ -544,6 +544,7 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
     render_fov -= yoffset * render_fov_step * render_fov;
 }
 
+/// keyboard callback function used to trigger the camera when the space bar is pressed
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) {       
         if (!(stage.isMoving()) && mosaic_hovered) {
@@ -583,35 +584,33 @@ int main(int argc, char** argv) {
     // Initialize hardware
 	camera.Init();
     stage.Init(0, 70);
-    //aperture.Init(0, 68);
 
     // Load settings
     LoadSettings();
-    NewSample();
+    NewSample();                                                        // initialize parameters to start a new sample (directory names, etc.)
 
     // Setup window
-    glfwSetErrorCallback(glfw_error_callback);
-    if (!glfwInit())
+    glfwSetErrorCallback(glfw_error_callback);                          // sets a function that is called if there is a GLFW error
+    if (!glfwInit())                                                    // initialize GLFW and exit if it isn't working
         return 1;
 
     // GL 3.0 + GLSL 130
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);                      // ask for OpenGL 3.0 if available
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 
     // Create window with graphics context
-    window = glfwCreateWindow(1600, 1200, "MUVitome", NULL, NULL);
-    if (window == NULL)
+    window = glfwCreateWindow(1600, 1200, "MUVitome", NULL, NULL);      // creates a GLFW window
+    if (window == NULL)                                                 // if something is wrong with the window, exit
         return 1;
-    glfwMakeContextCurrent(window);
+    glfwMakeContextCurrent(window);                                     // makes the current window active
     glfwSwapInterval(1); // Enable vsync
 
-    GLenum err = glewInit();                                                // enable GLEW
-    if (GLEW_OK != err)
-    {
+    GLenum err = glewInit();                                            // enable GLEW (this is a feature manager for OpenGL because Windows is dumb)
+    if (GLEW_OK != err){
         /* Problem: glewInit failed, something is seriously wrong. */
         printf("Error: %s\n", glewGetErrorString(err));
     }
-    printf("Status: Using GLEW %s\n", glewGetString(GLEW_VERSION));
+    printf("Status: Using GLEW %s\n", glewGetString(GLEW_VERSION));     // print the version of GLEW to make sure it's working
 
     //set input callbacks
     glfwSetMouseButtonCallback(window, mouse_button_callback);
@@ -619,7 +618,7 @@ int main(int argc, char** argv) {
     glfwSetScrollCallback(window, scroll_callback);
     glfwSetKeyCallback(window, key_callback);
 
-    InitUI(window, glsl_version);
+    InitUI(window, glsl_version);                                       // initialize ImGUI
 
     // initialize the mosaic display geometry and shader
     camera_image_shader.CreateShader(vertex_shader, fragment_shader);
@@ -632,12 +631,30 @@ int main(int argc, char** argv) {
 
 
     // Main loop
-    while (!glfwWindowShouldClose(window))
-    {
+    while (!glfwWindowShouldClose(window)){
 
+        
+        glfwPollEvents();                                       // Poll and handle events (inputs, window resize, etc.)
 
-        // Poll and handle events (inputs, window resize, etc.)
-        glfwPollEvents();
+        /// MAX:
+        // create a global variable new_section_ready = 0
+        // create a global variable light_on = 1
+
+        // CHECK ARDUINO:
+        //  IF the arduino says the light is on AND light_on == 0
+        //  THEN:
+        //      light_on = 1
+        //      new_section_ready = 1
+        //  IF the arduino says the light is off AND light_on == 1
+        //  THEN:
+        //      light_on = 0
+        //      new_section_ready = 0
+
+        // SEE IF WE CAN START A MOSAIC:
+        //  IF new_section_ready = 1
+        //  THEN start a mosiac:
+        //      new_section_ready = 0
+        //      BEGIN MOSAIC
 
         if (camera_live) {
             camera.Snap();
