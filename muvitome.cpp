@@ -38,6 +38,7 @@
 //also stuff that Max added: global control variables
 boolean g_light_on = true; 
 boolean g_new_section_ready = false;
+//Max added
 
 GLFWwindow* window;                                     // pointer to the GLFW window that will be created (used in GLFW calls to request properties)
 const char* glsl_version = "#version 130";              // specify the version of GLSL
