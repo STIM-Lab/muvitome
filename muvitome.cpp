@@ -1,22 +1,40 @@
 #include <iostream>
 #include <fstream>
 #include <filesystem>
-
 #include <Windows.h>
-
 #include <tira/hardware/ThorlabsCamera.h>
 #include <tira/hardware/ThorlabsKinesis.h>
-
 #include <thorlabs/TLDC4100.h>
 
+//these are libraries that Max added to the program
+#include <serialib.h>
+#include <string>
+#include <stdio.h>
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h> // Will drag system OpenGL headers
+#define IMGUI_DEFINE_MATH_OPERATORS //???????????????????????????????????????
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 #include "ImGuiFileDialog/ImGuiFileDialog.h"
 #include "tira/graphics_gl.h"
+
+
+//this is stuff that Max added
+#if defined (_WIN32) || defined(_WIN64)
+//for serial ports above "COM9", we must use this extended syntax of "\\.\COMx".
+//also works for COM0 to COM9.
+//https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilea?redirectedfrom=MSDN#communications-resources
+#define SERIAL_PORT "\\\\.\\COM3"
+#endif
+#if defined (__linux__) || defined(__APPLE__)
+#define SERIAL_PORT "/dev/ttyACM0"
+#endif
+
+//also stuff that Max added: global control variables
+boolean g_light_on = true; 
+boolean g_new_section_ready = false;
 
 GLFWwindow* window;                                     // pointer to the GLFW window that will be created (used in GLFW calls to request properties)
 const char* glsl_version = "#version 130";              // specify the version of GLSL
@@ -580,7 +598,16 @@ void InitPresets() {
 
 int main(int argc, char** argv) {
 
-    
+    //stuff that max added: to open serial port
+    serialib serial;
+    char buffer[15];
+    int control_int;
+    char errorOpening = serial.openDevice(SERIAL_PORT, 9600);
+    // If connection fails, return the error code otherwise, display a success message
+    if (errorOpening != 1) return errorOpening;
+    printf("Successful connection to %s\n", SERIAL_PORT);
+
+
     // Initialize hardware
 	camera.Init();
     stage.Init(0, 70);
@@ -633,12 +660,33 @@ int main(int argc, char** argv) {
     // Main loop
     while (!glfwWindowShouldClose(window)){
 
-        
+        for (int i = 0; i < 1000; i++) {
+            serial.readString(buffer, '\n', 14, 2000);
+            //printf("String read: %s\n", buffer);
+            control_int = int(buffer[0] - 48);
+
+            if (control_int == 1) {
+                printf("recognized a '1,' the system should take an image\n");
+            }
+
+            else if (control_int == 0) {
+                printf("recognized a '0,' the system should not take an image\n");
+            }
+
+            //do something
+            //Sleep(1000);
+        }
+        serial.closeDevice();
+
+
+
         glfwPollEvents();                                       // Poll and handle events (inputs, window resize, etc.)
 
         /// MAX:
-        // create a global variable new_section_ready = 0
-        // create a global variable light_on = 1
+        // create a global variable g_new_section_ready = 0-- DONE
+        // create a global variable g_light_on = 1-- DONE
+
+
 
         // CHECK ARDUINO:
         //  IF the arduino says the light is on AND light_on == 0
@@ -655,6 +703,8 @@ int main(int argc, char** argv) {
         //  THEN start a mosiac:
         //      new_section_ready = 0
         //      BEGIN MOSAIC
+
+
 
         if (camera_live) {
             camera.Snap();
