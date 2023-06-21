@@ -7,7 +7,8 @@
 #include <thorlabs/TLDC4100.h>
 
 //these are libraries that Max added to the program
-#include <serialib.h>
+#include <serialib.h> //this is not attached to vcpkg and will have to be manually updated from github if needed.
+                      //handles serial/COM communication from the arduino 
 #include <string>
 #include <stdio.h>
 
@@ -24,21 +25,28 @@
 #include "tira/graphics_gl.h"
 
 
-//this is stuff that Max added
+//this is stuff that Max added. This is how the serialib.cpp library opens serial/COM ports. The arduino is almost always attached to COM3.
 #if defined (_WIN32) || defined(_WIN64)
 //for serial ports above "COM9", we must use this extended syntax of "\\.\COMx".
 //also works for COM0 to COM9.
 //https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilea?redirectedfrom=MSDN#communications-resources
-#define SERIAL_PORT "\\\\.\\COM3"
+#define SERIAL_PORT "\\\\.\\COM3" //change this if using a different COM port
 #endif
 #if defined (__linux__) || defined(__APPLE__)
 #define SERIAL_PORT "/dev/ttyACM0"
 #endif
+//
+
+//stuff that max added: to open serial port
+serialib serial; //Initialize serial object to use with the serialib library
+char buffer[1]; //char buffer to store serial port information:: I CAN LIKELY CHANGE THIS TO BE SIZE 2, but this is fine for now
+//I am only passing in a "1" or "0" and the newline character into the serial port, so size 15 is unnecessary   
+int control_int; //constantly updated with the input from the serial port
 
 //also stuff that Max added: global control variables
-boolean g_light_on = true; 
-boolean g_new_section_ready = false;
-//Max added
+int g_light_on = 1; //is the microtome indicator light on? Light off = microtome is currently cutting a slice
+int g_new_section_ready = 0; //are we ready to take a section?
+//
 
 GLFWwindow* window;                                     // pointer to the GLFW window that will be created (used in GLFW calls to request properties)
 const char* glsl_version = "#version 130";              // specify the version of GLSL
@@ -600,16 +608,53 @@ void InitPresets() {
     Presets.push_back(x40);
 }
 
-int main(int argc, char** argv) {
-
-    //stuff that max added: to open serial port
-    serialib serial;
-    char buffer[15];
-    int control_int;
+//function that Max added to open the serial port that the arduino input is passed in from
+char openSerial() {
     char errorOpening = serial.openDevice(SERIAL_PORT, 9600);
     // If connection fails, return the error code otherwise, display a success message
     if (errorOpening != 1) return errorOpening;
-    printf("Successful connection to %s\n", SERIAL_PORT);
+        printf("Successful connection to %s\n", SERIAL_PORT);
+}
+
+//function that Max added to read the status of the indicator light from the arduino
+int checkArduino() {
+    serial.readStringNoTimeOut(buffer, '\n', 1);
+    //printf("String read: %s\n", buffer); //FOR DEBUGGING. Should be removed in final build
+    int status_int = int(buffer[0] - 48); //the serial inputs are passed as ASCII characters, so we need to do this to convert them to ints
+    return status_int;
+}
+
+int main(int argc, char** argv) {
+
+    openSerial(); //do I need to assign the error code to some variable?
+
+    ////stuff that max added: to open serial port
+    //serialib serial; //Initialize serial object to use with the serialib library
+    //char buffer[15]; //char buffer to store serial port information:: I CAN LIKELY CHANGE THIS TO BE SIZE 2, but this is fine for now
+    //                 //I am only passing in a "1" or "0" and the newline character into the serial port, so size 15 is unnecessary   
+    //int control_int; //constantly updated with the input from the serial port
+    //char errorOpening = serial.openDevice(SERIAL_PORT, 9600);
+    //// If connection fails, return the error code otherwise, display a success message
+    //if (errorOpening != 1) return errorOpening;
+    //printf("Successful connection to %s\n", SERIAL_PORT);
+
+    //for (int i = 0; i < 50; i++) {
+    //    serial.readString(buffer, '\n', 14, 2000);
+    //    //printf("String read: %s\n", buffer);
+    //    control_int = int(buffer[0] - 48); //the serial inputs are passed as ASCII characters, so we need to do this to convert them to ints
+
+    //    if (control_int == 1) {
+    //        printf("recognized a '1,' the system should take an image\n");
+    //    }
+
+    //    else if (control_int == 0) {
+    //        printf("recognized a '0,' the system should not take an image\n");
+    //    }
+
+    //    //do something
+    //    //Sleep(1000);
+    //}
+   
 
 
     // Initialize hardware
@@ -660,37 +705,48 @@ int main(int argc, char** argv) {
 
     InitPresets();
 
-
     // Main loop
     while (!glfwWindowShouldClose(window)){
 
-        for (int i = 0; i < 1000; i++) {
-            serial.readString(buffer, '\n', 14, 2000);
-            //printf("String read: %s\n", buffer);
-            control_int = int(buffer[0] - 48);
+        
 
-            if (control_int == 1) {
-                printf("recognized a '1,' the system should take an image\n");
-            }
-
-            else if (control_int == 0) {
-                printf("recognized a '0,' the system should not take an image\n");
-            }
-
-            //do something
-            //Sleep(1000);
-        }
-        serial.closeDevice();
-
-
-
+        std::cout << "start of loop: " << std::endl;
         glfwPollEvents();                                       // Poll and handle events (inputs, window resize, etc.)
+
+        control_int = checkArduino();
+        //control_int == 1 means that the indicator light is on and the microtme is not currenlty cutting
+        //control_int == 0 means that indicator light is off and the microtome is currently cutting
+        std::cout << "control_int is: "<< control_int << std::endl;
+        /*std::cout << "g_light_on is: " << g_light_on << std::endl;
+        std::cout << "g_new_section_ready is: " << g_new_section_ready << std::endl;*/
+        
+
+        if (control_int == 1 && g_light_on == 0) { 
+            g_light_on = 1;
+            g_new_section_ready = 1;
+            std::cout << "Ready to take an image" << std::endl;
+        }
+
+        else if (control_int == 0 && g_light_on == 1) {
+            g_light_on = 0;
+            g_new_section_ready = 0;
+            std::cout << "Not ready to take an image" << std::endl;
+        }
+
+        //????????????????????????????????????????????? Necessary? For debugging?
+        else if (control_int == 0 && g_light_on == 0) {
+            std::cout << "Not ready to take an image" << std::endl;
+        }
+
+        if (g_new_section_ready == 1) {
+            g_new_section_ready = 0;
+            std::cout << "Image taken!" << std::endl;
+            //BEGIN MOSIAC:: HOW?
+        }
 
         /// MAX:
         // create a global variable g_new_section_ready = 0-- DONE
         // create a global variable g_light_on = 1-- DONE
-
-
 
         // CHECK ARDUINO:
         //  IF the arduino says the light is on AND light_on == 0
@@ -707,7 +763,6 @@ int main(int argc, char** argv) {
         //  THEN start a mosiac:
         //      new_section_ready = 0
         //      BEGIN MOSAIC
-
 
 
         if (camera_live) {
@@ -793,6 +848,10 @@ int main(int argc, char** argv) {
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());     // draw the GUI data from its buffer
 
         glfwSwapBuffers(window);                                    // swap the double buffer
+        std::cout << std::endl;
+        //Sleep(1000);
+        //printf("end of the loop\n");
+        //printf(" ");
     }
 
 
@@ -805,6 +864,7 @@ int main(int argc, char** argv) {
 
     camera.Destroy();
     stage.Destroy();
+    serial.closeDevice();
 
     return 0;
 	
