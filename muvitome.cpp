@@ -710,39 +710,39 @@ int main(int argc, char** argv) {
 
         
 
-        std::cout << "start of loop: " << std::endl;
+        //std::cout << "start of loop: " << std::endl;
         glfwPollEvents();                                       // Poll and handle events (inputs, window resize, etc.)
 
-        control_int = checkArduino();
-        //control_int == 1 means that the indicator light is on and the microtme is not currenlty cutting
-        //control_int == 0 means that indicator light is off and the microtome is currently cutting
-        std::cout << "control_int is: "<< control_int << std::endl;
-        /*std::cout << "g_light_on is: " << g_light_on << std::endl;
-        std::cout << "g_new_section_ready is: " << g_new_section_ready << std::endl;*/
-        
+        //control_int = checkArduino();
+        ////control_int == 1 means that the indicator light is on and the microtme is not currenlty cutting
+        ////control_int == 0 means that indicator light is off and the microtome is currently cutting
+        //std::cout << "control_int is: "<< control_int << std::endl;
+        ///*std::cout << "g_light_on is: " << g_light_on << std::endl;
+        //std::cout << "g_new_section_ready is: " << g_new_section_ready << std::endl;*/
+        //
 
-        if (control_int == 1 && g_light_on == 0) { 
-            g_light_on = 1;
-            g_new_section_ready = 1;
-            std::cout << "Ready to take an image" << std::endl;
-        }
+        //if (control_int == 1 && g_light_on == 0) { 
+        //    g_light_on = 1;
+        //    g_new_section_ready = 1;
+        //    std::cout << "Ready to take an image" << std::endl;
+        //}
 
-        else if (control_int == 0 && g_light_on == 1) {
-            g_light_on = 0;
-            g_new_section_ready = 0;
-            std::cout << "Not ready to take an image" << std::endl;
-        }
+        //else if (control_int == 0 && g_light_on == 1) {
+        //    g_light_on = 0;
+        //    g_new_section_ready = 0;
+        //    std::cout << "Not ready to take an image" << std::endl;
+        //}
 
-        //????????????????????????????????????????????? Necessary? For debugging?
-        else if (control_int == 0 && g_light_on == 0) {
-            std::cout << "Not ready to take an image" << std::endl;
-        }
+        ////????????????????????????????????????????????? Necessary? For debugging?
+        //else if (control_int == 0 && g_light_on == 0) {
+        //    std::cout << "Not ready to take an image" << std::endl;
+        //}
 
-        if (g_new_section_ready == 1) {
-            g_new_section_ready = 0;
-            std::cout << "Image taken!" << std::endl;
-            //BEGIN MOSIAC:: HOW?
-        }
+        //if (g_new_section_ready == 1) {
+        //    g_new_section_ready = 0;
+        //    std::cout << "Image taken!" << std::endl;
+        //    //BEGIN MOSIAC:: HOW?
+        //}
 
         /// MAX:
         // create a global variable g_new_section_ready = 0-- DONE
