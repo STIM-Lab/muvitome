@@ -621,21 +621,19 @@ char openSerial() {
 
 //function that Max added to read the status of the indicator light from the arduino
 int checkArduino() {
-    
-    // char s;
 
-    // read a character (return 0 if there is no character)
-    // bool char_read = serial.readchar(&s, 0);
+    char status;
 
-    // if(char_read == 0) return 0;
-    // if(char_read == 1){ if(s == '0') return 0; else return 1;}
-
+    //// read a character (return 0 if there is no character)
+    bool char_read = serial.readChar(&status, 1);
+    if(char_read == 0) return 0;
+    if(char_read == 1) return 1;
 
 
-    serial.readStringNoTimeOut(buffer, '\n', 1);
-    //printf("String read: %s\n", buffer); //FOR DEBUGGING. Should be removed in final build
-    int status_int = int(buffer[0] - 48); //the serial inputs are passed as ASCII characters, so we need to do this to convert them to ints
-    return status_int;
+
+    //serial.readString(buffer, '\n', 1);
+    //int status_int = int(buffer[0] - 48); //the serial inputs are passed as ASCII characters, so we need to do this to convert them to ints
+  // return status_int;
 }
 
 int main(int argc, char** argv) {
@@ -697,18 +695,21 @@ int main(int argc, char** argv) {
 
         //std::cout << "start of loop: " c
         glfwPollEvents();                                       // Poll and handle events (inputs, window resize, etc.)
+        /*control_int = checkArduino();
+        std::cout << "control_int is: " << control_int << std::endl;*/
 
+        
         if (automatic_mode) {
             std::cout << "automatic mode is on" << std::endl;
         
             control_int = checkArduino();
             //control_int == 1 means that the indicator light is on and the microtme is not currenlty cutting
             //control_int == 0 means that indicator light is off and the microtome is currently cutting
-            //std::cout << "control_int is: "<< control_int << std::endl;
+            std::cout << "control_int is: "<< control_int << std::endl;
             //std::cout << "g_light_on is: " << g_light_on << std::endl;
             //std::cout << "g_new_section_ready is: " << g_new_section_ready << std::endl;
         
-
+            
             if (control_int == 1 && g_light_on == 0) { 
                 g_light_on = 1;
                 g_new_section_ready = 1;
