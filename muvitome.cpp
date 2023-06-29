@@ -621,6 +621,17 @@ char openSerial() {
 
 //function that Max added to read the status of the indicator light from the arduino
 int checkArduino() {
+    
+    // char s;
+
+    // read a character (return 0 if there is no character)
+    // bool char_read = serial.readchar(&s, 0);
+
+    // if(char_read == 0) return 0;
+    // if(char_read == 1){ if(s == '0') return 0; else return 1;}
+
+
+
     serial.readStringNoTimeOut(buffer, '\n', 1);
     //printf("String read: %s\n", buffer); //FOR DEBUGGING. Should be removed in final build
     int status_int = int(buffer[0] - 48); //the serial inputs are passed as ASCII characters, so we need to do this to convert them to ints
