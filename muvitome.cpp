@@ -43,7 +43,9 @@ char buffer[1]; //char buffer to store serial port information
 int control_int; //constantly updated with the input from the serial port
 
 //also stuff that Max added: global control variables
-int g_light_on = 1; //is the microtome indicator light on? Light off = microtome is currently cutting a slice
+bool light_on = 1;                                      //is the microtome indicator light on? Light off = microtome is currently cutting a slice
+bool light_changed = 0;                                 // has the microtome light changed?
+
 int g_new_section_ready = 0; //are we ready to take a section?
 //
 
@@ -620,14 +622,29 @@ char openSerial() {
 }
 
 //function that Max added to read the status of the indicator light from the arduino
-int checkArduino() {
+void UpdateLightFromArduino() {
 
     char status;
 
     //// read a character (return 0 if there is no character)
-    bool char_read = serial.readChar(&status, 1);
-    if(char_read == 0) return 0;
-    if(char_read == 1) return 1;
+    bool char_read = serial.readChar(&status, 1);       // get the current status from the Arduino
+
+    if(char_read == 0) return;                          // if there is no data from the Arduino, then nothing has changed
+
+    if (char_read == 1) {                               // if the Arduino has submitted data
+        if (status == '0') {                            // if the Arduino passed a character '0', then the light is off
+            if (light_on) {                             // if the light variable is currently ON
+                light_on = false;                       //      turn the light variable OFF
+                light_changed = true;                   //      indicate that the light has changed
+            }
+        }
+        else {                                          // if the Arduno passes a character that ISN'T '0', then the light is on
+            if (!light_on) {                            // if the light variable is currently OFF
+                light_on = true;                        //      turn the light variable ON
+                light_changed = true;                   //      indicate that the light has changed
+            }
+        }
+    }
 
 
 
@@ -699,11 +716,22 @@ int main(int argc, char** argv) {
         std::cout << "control_int is: " << control_int << std::endl;*/
 
         
-        if (automatic_mode) {
-            std::cout << "automatic mode is on" << std::endl;
-        
-            control_int = checkArduino();
-            //control_int == 1 means that the indicator light is on and the microtme is not currenlty cutting
+        if (automatic_mode && CommandQueue.empty()) {           // if Automatic Mode is ON and the command queue is empty (we can start a new mosaic)
+            
+            UpdateLightFromArduino();                           // Check the Arduino and update the light status
+            if (light_changed) {
+                if (light_on) {                                 // if the light changed to ON
+                    std::cout << "Light Just Turned ON" << std::endl;
+                    // start a mosaic
+                    light_changed = false;
+                }
+                if (!light_on) {                                // if the light changed to OFF
+                    // do nothing
+                    std::cout << "Light Just Turned OFF" << std::endl;
+                    light_changed = false;
+                }
+            }
+            /*//control_int == 1 means that the indicator light is on and the microtme is not currenlty cutting
             //control_int == 0 means that indicator light is off and the microtome is currently cutting
             std::cout << "control_int is: "<< control_int << std::endl;
             //std::cout << "g_light_on is: " << g_light_on << std::endl;
@@ -730,8 +758,13 @@ int main(int argc, char** argv) {
             if (g_new_section_ready == 1) {
                 std::cout << "image taken!" << std::endl;
                 BeginMosaic();
+<<<<<<< HEAD
                 g_new_section_ready = 0;
             }
+=======
+                
+            }*/
+>>>>>>> 1e57936ca32ac343e5520fcdb15e758d7dc7b9b6
         }
         
 
