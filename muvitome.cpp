@@ -728,10 +728,9 @@ int main(int argc, char** argv) {
             }
 
             if (g_new_section_ready == 1) {
-               g_new_section_ready = 0;
                 std::cout << "image taken!" << std::endl;
                 BeginMosaic();
-                
+                g_new_section_ready = 0;
             }
         }
         
