@@ -6,7 +6,7 @@
 #include <tira/hardware/ThorlabsKinesis.h>
 #include <thorlabs/TLDC4100.h>
 
-//these are libraries that Max added to the program
+//these is a library that Max added to the program
 #include <serialib.h> //this is not attached to vcpkg and will have to be manually updated from github if needed.
                       //handles serial/COM communication from the arduino 
 #include <string>
@@ -30,7 +30,7 @@
 //for serial ports above "COM9", we must use this extended syntax of "\\.\COMx".
 //also works for COM0 to COM9.
 //https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilea?redirectedfrom=MSDN#communications-resources
-#define SERIAL_PORT "\\\\.\\COM3" //change this if using a different COM port
+#define SERIAL_PORT "\\\\.\\COM4" //change this if using a different COM port
 #endif
 #if defined (__linux__) || defined(__APPLE__)
 #define SERIAL_PORT "/dev/ttyACM0"
@@ -38,15 +38,15 @@
 //
 
 //stuff that max added: to open serial port
-serialib serial; //Initialize serial object to use with the serialib library
-char buffer[1]; //char buffer to store serial port information:: I CAN LIKELY CHANGE THIS TO BE SIZE 2, but this is fine for now
-//I am only passing in a "1" or "0" and the newline character into the serial port, so size 15 is unnecessary   
-int control_int; //constantly updated with the input from the serial port
+serialib serial;                                     //Initialize serial object to use with the serialib library
+bool automatic_mode = false;                         //Boolean to tell the program that we want to run using the automated system I have been developing.
+
 
 //also stuff that Max added: global control variables
-int g_light_on = 1; //is the microtome indicator light on? Light off = microtome is currently cutting a slice
-int g_new_section_ready = 0; //are we ready to take a section?
-//
+bool light_on = 1;                                      //is the microtome indicator light on? Light off = microtome is currently cutting a slice
+bool light_changed = 0;                                 // has the microtome light changed?
+
+int g_new_section_ready = 0;                            //are we ready to take a section?
 
 GLFWwindow* window;                                     // pointer to the GLFW window that will be created (used in GLFW calls to request properties)
 const char* glsl_version = "#version 130";              // specify the version of GLSL
@@ -94,7 +94,7 @@ std::string SettingsFile = "default.txt";               // file used to load and
 int SampleImageCount = 0;
 
 std::vector<tira::image<unsigned char>> ImageQueue;     // stores the current mosaic as a sequence of images
-enum Command {Move, Image};
+enum Command {Move, Image, Cut};
 std::queue<Command> CommandQueue;                     // stores the current commands for collecting a mosaic
 
 bool homed = false;                                     // flag identifies whether or not the stage has been homed this session
@@ -303,10 +303,14 @@ void ProcessCommandQueue() {
         CommandQueue.pop();
         return;
     }
+    else if (CommandQueue.front() == Command::Cut) {
+        //tell microtome to cut here
+        serial.writeChar('c');
+        CommandQueue.pop();
+        return;
+    }
     
 }
-
-
 
 /// <summary>
 /// This function renders the user interface every frame
@@ -382,6 +386,9 @@ void RenderUI() {
                 ImGui::BeginDisabled();
                 stage_disabled = true;
             }
+
+            //MAX ADDED, check the automatic mode checkbox if want use the automated system I've been developing
+            ImGui::Checkbox("Automatic mode?", &automatic_mode);
 
             // Collect mosaics
             if (camera_live) camera_disabled = true;
@@ -617,45 +624,34 @@ char openSerial() {
 }
 
 //function that Max added to read the status of the indicator light from the arduino
-int checkArduino() {
-    serial.readStringNoTimeOut(buffer, '\n', 1);
-    //printf("String read: %s\n", buffer); //FOR DEBUGGING. Should be removed in final build
-    int status_int = int(buffer[0] - 48); //the serial inputs are passed as ASCII characters, so we need to do this to convert them to ints
-    return status_int;
+void UpdateLightFromArduino() {
+
+    char status;
+
+    //// read a character (return 0 if there is no character)
+    bool char_read = serial.readChar(&status, 1);       // get the current status from the Arduino
+
+    if(char_read == 0) return;                          // if there is no data from the Arduino, then nothing has changed
+
+    if (char_read == 1) {                               // if the Arduino has submitted data
+        if (status == '0') {                            // if the Arduino passed a character '0', then the light is off
+            if (light_on) {                             // if the light variable is currently ON
+                light_on = false;                       //      turn the light variable OFF
+                light_changed = true;                   //      indicate that the light has changed
+            }
+        }
+        else {                                          // if the Arduno passes a character that ISN'T '0', then the light is on
+            if (!light_on) {                            // if the light variable is currently OFF
+                light_on = true;                        //      turn the light variable ON
+                light_changed = true;                   //      indicate that the light has changed
+            }
+        }
+    }
 }
 
 int main(int argc, char** argv) {
 
-    openSerial(); //do I need to assign the error code to some variable?
-
-    ////stuff that max added: to open serial port
-    //serialib serial; //Initialize serial object to use with the serialib library
-    //char buffer[15]; //char buffer to store serial port information:: I CAN LIKELY CHANGE THIS TO BE SIZE 2, but this is fine for now
-    //                 //I am only passing in a "1" or "0" and the newline character into the serial port, so size 15 is unnecessary   
-    //int control_int; //constantly updated with the input from the serial port
-    //char errorOpening = serial.openDevice(SERIAL_PORT, 9600);
-    //// If connection fails, return the error code otherwise, display a success message
-    //if (errorOpening != 1) return errorOpening;
-    //printf("Successful connection to %s\n", SERIAL_PORT);
-
-    //for (int i = 0; i < 50; i++) {
-    //    serial.readString(buffer, '\n', 14, 2000);
-    //    //printf("String read: %s\n", buffer);
-    //    control_int = int(buffer[0] - 48); //the serial inputs are passed as ASCII characters, so we need to do this to convert them to ints
-
-    //    if (control_int == 1) {
-    //        printf("recognized a '1,' the system should take an image\n");
-    //    }
-
-    //    else if (control_int == 0) {
-    //        printf("recognized a '0,' the system should not take an image\n");
-    //    }
-
-    //    //do something
-    //    //Sleep(1000);
-    //}
-   
-
+    openSerial(); //Open the serial port--do I need to assign the error code to some variable? see warning message
 
     // Initialize hardware
 	camera.Init();
@@ -710,61 +706,27 @@ int main(int argc, char** argv) {
 
         
 
-        std::cout << "start of loop: " << std::endl;
         glfwPollEvents();                                       // Poll and handle events (inputs, window resize, etc.)
-
-        control_int = checkArduino();
-        //control_int == 1 means that the indicator light is on and the microtme is not currenlty cutting
-        //control_int == 0 means that indicator light is off and the microtome is currently cutting
-        std::cout << "control_int is: "<< control_int << std::endl;
-        /*std::cout << "g_light_on is: " << g_light_on << std::endl;
-        std::cout << "g_new_section_ready is: " << g_new_section_ready << std::endl;*/
         
+        if (automatic_mode && CommandQueue.empty()) {           // if Automatic Mode is ON and the command queue is empty (we can start a new mosaic)
 
-        if (control_int == 1 && g_light_on == 0) { 
-            g_light_on = 1;
-            g_new_section_ready = 1;
-            std::cout << "Ready to take an image" << std::endl;
+            UpdateLightFromArduino();                           // Check the Arduino and update the light status
+            if (light_changed) {
+                if (light_on) {                                 // if the light changed to ON
+                    std::cout << "Light Just Turned ON" << std::endl;
+                    BeginMosaic();
+                    light_changed = false;
+                    CommandQueue.push(Command::Cut);
+                    
+                }
+                if (!light_on) {                                // if the light changed to OFF
+                    // do nothing
+                    std::cout << "Light Just Turned OFF" << std::endl;
+                    light_changed = false;
+                }
+            }
         }
-
-        else if (control_int == 0 && g_light_on == 1) {
-            g_light_on = 0;
-            g_new_section_ready = 0;
-            std::cout << "Not ready to take an image" << std::endl;
-        }
-
-        //????????????????????????????????????????????? Necessary? For debugging?
-        else if (control_int == 0 && g_light_on == 0) {
-            std::cout << "Not ready to take an image" << std::endl;
-        }
-
-        if (g_new_section_ready == 1) {
-            g_new_section_ready = 0;
-            std::cout << "Image taken!" << std::endl;
-            //BEGIN MOSIAC:: HOW?
-        }
-
-        /// MAX:
-        // create a global variable g_new_section_ready = 0-- DONE
-        // create a global variable g_light_on = 1-- DONE
-
-        // CHECK ARDUINO:
-        //  IF the arduino says the light is on AND light_on == 0
-        //  THEN:
-        //      light_on = 1
-        //      new_section_ready = 1
-        //  IF the arduino says the light is off AND light_on == 1
-        //  THEN:
-        //      light_on = 0
-        //      new_section_ready = 0
-
-        // SEE IF WE CAN START A MOSAIC:
-        //  IF new_section_ready = 1
-        //  THEN start a mosiac:
-        //      new_section_ready = 0
-        //      BEGIN MOSAIC
-
-
+            
         if (camera_live) {
             camera.Snap();
             LiveImage = camera.getImage8();
@@ -848,10 +810,6 @@ int main(int argc, char** argv) {
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());     // draw the GUI data from its buffer
 
         glfwSwapBuffers(window);                                    // swap the double buffer
-        std::cout << std::endl;
-        //Sleep(1000);
-        //printf("end of the loop\n");
-        //printf(" ");
     }
 
 
