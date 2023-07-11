@@ -30,7 +30,7 @@
 //for serial ports above "COM9", we must use this extended syntax of "\\.\COMx".
 //also works for COM0 to COM9.
 //https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilea?redirectedfrom=MSDN#communications-resources
-#define SERIAL_PORT "\\\\.\\COM3" //change this if using a different COM port
+#define SERIAL_PORT "\\\\.\\COM4" //change this if using a different COM port
 #endif
 #if defined (__linux__) || defined(__APPLE__)
 #define SERIAL_PORT "/dev/ttyACM0"
@@ -38,16 +38,15 @@
 //
 
 //stuff that max added: to open serial port
-serialib serial; //Initialize serial object to use with the serialib library
-char buffer[1]; //char buffer to store serial port information
-int control_int; //constantly updated with the input from the serial port
+serialib serial;                                     //Initialize serial object to use with the serialib library
+bool automatic_mode = false;                         //Boolean to tell the program that we want to run using the automated system I have been developing.
+
 
 //also stuff that Max added: global control variables
 bool light_on = 1;                                      //is the microtome indicator light on? Light off = microtome is currently cutting a slice
 bool light_changed = 0;                                 // has the microtome light changed?
 
-int g_new_section_ready = 0; //are we ready to take a section?
-//
+int g_new_section_ready = 0;                            //are we ready to take a section?
 
 GLFWwindow* window;                                     // pointer to the GLFW window that will be created (used in GLFW calls to request properties)
 const char* glsl_version = "#version 130";              // specify the version of GLSL
@@ -95,12 +94,11 @@ std::string SettingsFile = "default.txt";               // file used to load and
 int SampleImageCount = 0;
 
 std::vector<tira::image<unsigned char>> ImageQueue;     // stores the current mosaic as a sequence of images
-enum Command {Move, Image};
+enum Command {Move, Image, Cut};
 std::queue<Command> CommandQueue;                     // stores the current commands for collecting a mosaic
 
 bool homed = false;                                     // flag identifies whether or not the stage has been homed this session
 bool mosaic_hovered = false;
-bool automatic_mode = false;                         ///MAX ADDED. Boolean to tell the program that we want to run using the automated system I have been developing.
 
 struct MuvitomePreset {
     std::string name;
@@ -305,10 +303,14 @@ void ProcessCommandQueue() {
         CommandQueue.pop();
         return;
     }
+    else if (CommandQueue.front() == Command::Cut) {
+        //tell microtome to cut here
+        serial.writeChar('c');
+        CommandQueue.pop();
+        return;
+    }
     
 }
-
-
 
 /// <summary>
 /// This function renders the user interface every frame
@@ -645,12 +647,6 @@ void UpdateLightFromArduino() {
             }
         }
     }
-
-
-
-    //serial.readString(buffer, '\n', 1);
-    //int status_int = int(buffer[0] - 48); //the serial inputs are passed as ASCII characters, so we need to do this to convert them to ints
-  // return status_int;
 }
 
 int main(int argc, char** argv) {
@@ -710,20 +706,18 @@ int main(int argc, char** argv) {
 
         
 
-        //std::cout << "start of loop: " c
         glfwPollEvents();                                       // Poll and handle events (inputs, window resize, etc.)
-        /*control_int = checkArduino();
-        std::cout << "control_int is: " << control_int << std::endl;*/
-
         
         if (automatic_mode && CommandQueue.empty()) {           // if Automatic Mode is ON and the command queue is empty (we can start a new mosaic)
-            
+
             UpdateLightFromArduino();                           // Check the Arduino and update the light status
             if (light_changed) {
                 if (light_on) {                                 // if the light changed to ON
                     std::cout << "Light Just Turned ON" << std::endl;
-                    // start a mosaic
+                    BeginMosaic();
                     light_changed = false;
+                    CommandQueue.push(Command::Cut);
+                    
                 }
                 if (!light_on) {                                // if the light changed to OFF
                     // do nothing
@@ -731,60 +725,8 @@ int main(int argc, char** argv) {
                     light_changed = false;
                 }
             }
-            /*//control_int == 1 means that the indicator light is on and the microtme is not currenlty cutting
-            //control_int == 0 means that indicator light is off and the microtome is currently cutting
-            std::cout << "control_int is: "<< control_int << std::endl;
-            //std::cout << "g_light_on is: " << g_light_on << std::endl;
-            //std::cout << "g_new_section_ready is: " << g_new_section_ready << std::endl;
-        
-            
-            if (control_int == 1 && g_light_on == 0) { 
-                g_light_on = 1;
-                g_new_section_ready = 1;
-                std::cout << "ready to take an image" << std::endl;
-            }
-
-            else if (control_int == 0 && g_light_on == 1) {
-                g_light_on = 0;
-                g_new_section_ready = 0;
-                std::cout << "not ready to take an image" << std::endl;
-            }
-
-            ////????????????????????????????????????????????? necessary? for debugging?
-            else if (control_int == 0 && g_light_on == 0) {
-                std::cout << "not ready to take an image" << std::endl;
-            }
-
-            if (g_new_section_ready == 1) {
-                std::cout << "image taken!" << std::endl;
-                BeginMosaic();
-<<<<<<< HEAD
-                g_new_section_ready = 0;
-            }
-=======
-                
-            }*/
->>>>>>> 1e57936ca32ac343e5520fcdb15e758d7dc7b9b6
         }
-        
-
-        // check arduino:
-        //  if the arduino says the light is on and light_on == 0
-        //  then:
-        //      light_on = 1
-        //      new_section_ready = 1
-        //  if the arduino says the light is off and light_on == 1
-        //  then:
-        //      light_on = 0
-        //      new_section_ready = 0
-
-        // see if we can start a mosaic:
-        //  if new_section_ready = 1
-        //  then start a mosiac:
-        //      new_section_ready = 0
-        //      begin mosaic
-
-
+            
         if (camera_live) {
             camera.Snap();
             LiveImage = camera.getImage8();
@@ -868,10 +810,6 @@ int main(int argc, char** argv) {
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());     // draw the GUI data from its buffer
 
         glfwSwapBuffers(window);                                    // swap the double buffer
-        std::cout << std::endl;
-        //Sleep(1000);
-        //printf("end of the loop\n");
-        //printf(" ");
     }
 
 
