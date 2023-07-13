@@ -3,6 +3,7 @@ import os
 from tqdm import tqdm
 import skimage
 import skimage.transform
+import shutil
 
 def AssembleMuvitome(in_path, out_path, overlap_percent = (0, 0)):
     # get the list of folders to determine the mosaic size
@@ -10,12 +11,22 @@ def AssembleMuvitome(in_path, out_path, overlap_percent = (0, 0)):
     
     if not os.path.exists(out_path):
         os.mkdir(out_path)
+    
+    # if there aren't any tile folders, just copy the images
+    if os.path.isfile(in_path + "/" + TileFolders[0]):
+        ImageNames = os.listdir(in_path)
+        for i in range(len(ImageNames)):
+            shutil.copyfile(in_path + "/" + ImageNames[i], out_path + "/" + ImageNames[i])
+        return
+    
+    
 
 
     # calculate the number of rows and columns
     Columns = []
     Rows = []
 
+    
     for f in TileFolders:
         indices = [int(s) for s in f.split("_") if s.isdigit()]
         Columns.append(indices[0])
