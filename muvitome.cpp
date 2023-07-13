@@ -6,7 +6,7 @@
 #include <tira/hardware/ThorlabsKinesis.h>
 #include <thorlabs/TLDC4100.h>
 
-//these are libraries that Max added to the program
+//these is a libraryg that Max added to the program
 #include <serialib.h> //this is not attached to vcpkg and will have to be manually updated from github if needed.
                       //handles serial/COM communication from the arduino 
 #include <string>
