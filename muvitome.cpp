@@ -389,7 +389,7 @@ void RenderUI() {
 
             //MAX ADDED, check the automatic mode checkbox if want use the automated system I've been developing
             if (ImGui::Checkbox("Automatic mode?", &automatic_mode)) {
-                // MAX: set up any variables here to get it started
+                light_changed = 1;
                 
             }
 
