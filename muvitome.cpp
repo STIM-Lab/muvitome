@@ -392,6 +392,14 @@ void RenderUI() {
                 light_changed = 1;
                 
             }
+            
+            ImGui::SameLine();
+            if (ImGui::Button("Single Slice"))                              //Button to make a slice (double-press the start/stop button)
+                serial.writeChar('c');
+
+            ImGui::SameLine();
+            if (ImGui::Button("Single Press"))                              //Button to press the start/stop button a single time
+                serial.writeChar('p');
 
             // Collect mosaics
             if (camera_live) camera_disabled = true;
