@@ -631,7 +631,7 @@ char openSerial() {
     char errorOpening = serial.openDevice(SERIAL_PORT, 9600);
     // If connection fails, return the error code otherwise, display a success message
     if (errorOpening != 1) return errorOpening;
-        printf("Successful connection to %s\n", SERIAL_PORT);
+        printf("Successful connection to %s\n", SERIAL_PORT);   //If a message other than "successful connection" is printed, then the arduino is not successfuly connected.
 }
 
 //function that Max added to read the status of the indicator light from the arduino
@@ -723,16 +723,16 @@ int main(int argc, char** argv) {
 
             UpdateLightFromArduino();                           // Check the Arduino and update the light status
             if (light_changed) {
-                if (light_on) {                                 // if the light changed to ON
-                    std::cout << "Light Just Turned ON" << std::endl;
+                if (light_on) {                                 // if the light has changed to ON, it means the microtome has finished making a slice, so we start a mosiac and make another cut
+                    //std::cout << "Light Just Turned ON" << std::endl;
                     BeginMosaic();
                     light_changed = false;
                     CommandQueue.push(Command::Cut);
                     
                 }
-                if (!light_on) {                                // if the light changed to OFF
+                if (!light_on) {                                // if the light changed to OFF, we do nothing (the microtome is currenlty cutting
                     // do nothing
-                    std::cout << "Light Just Turned OFF" << std::endl;
+                    //std::cout << "Light Just Turned OFF" << std::endl;
                     light_changed = false;
                 }
             }
