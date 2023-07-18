@@ -30,7 +30,7 @@
 //for serial ports above "COM9", we must use this extended syntax of "\\.\COMx".
 //also works for COM0 to COM9.
 //https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilea?redirectedfrom=MSDN#communications-resources
-#define SERIAL_PORT "\\\\.\\COM4" //change this if using a different COM port
+#define SERIAL_PORT "\\\\.\\COM5" //change this if using a different COM port
 #endif
 #if defined (__linux__) || defined(__APPLE__)
 #define SERIAL_PORT "/dev/ttyACM0"
