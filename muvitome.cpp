@@ -30,7 +30,7 @@
 //for serial ports above "COM9", we must use this extended syntax of "\\.\COMx".
 //also works for COM0 to COM9.
 //https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilea?redirectedfrom=MSDN#communications-resources
-#define SERIAL_PORT "\\\\.\\COM4" //change this if using a different COM port
+#define SERIAL_PORT "\\\\.\\COM6" //change this if using a different COM port
 #endif
 #if defined (__linux__) || defined(__APPLE__)
 #define SERIAL_PORT "/dev/ttyACM0"
@@ -392,6 +392,14 @@ void RenderUI() {
                 light_changed = 1;
                 
             }
+            
+            ImGui::SameLine();
+            if (ImGui::Button("Single Slice"))                              //Button to make a slice (double-press the start/stop button)
+                serial.writeChar('c');
+
+            ImGui::SameLine();
+            if (ImGui::Button("Single Press"))                              //Button to press the start/stop button a single time
+                serial.writeChar('p');
 
             // Collect mosaics
             if (camera_live) camera_disabled = true;
@@ -623,7 +631,7 @@ char openSerial() {
     char errorOpening = serial.openDevice(SERIAL_PORT, 9600);
     // If connection fails, return the error code otherwise, display a success message
     if (errorOpening != 1) return errorOpening;
-        printf("Successful connection to %s\n", SERIAL_PORT);
+        printf("Successful connection to %s\n", SERIAL_PORT);   //If a message other than "successful connection" is printed, then the arduino is not successfuly connected.
 }
 
 //function that Max added to read the status of the indicator light from the arduino
@@ -715,16 +723,16 @@ int main(int argc, char** argv) {
 
             UpdateLightFromArduino();                           // Check the Arduino and update the light status
             if (light_changed) {
-                if (light_on) {                                 // if the light changed to ON
-                    std::cout << "Light Just Turned ON" << std::endl;
+                if (light_on) {                                 // if the light has changed to ON, it means the microtome has finished making a slice, so we start a mosiac and make another cut
+                    //std::cout << "Light Just Turned ON" << std::endl;
                     BeginMosaic();
                     light_changed = false;
                     CommandQueue.push(Command::Cut);
                     
                 }
-                if (!light_on) {                                // if the light changed to OFF
+                if (!light_on) {                                // if the light changed to OFF, we do nothing (the microtome is currenlty cutting
                     // do nothing
-                    std::cout << "Light Just Turned OFF" << std::endl;
+                    //std::cout << "Light Just Turned OFF" << std::endl;
                     light_changed = false;
                 }
             }
