@@ -381,7 +381,7 @@ void RenderUI() {
                 ImGui::EndPopup();
             }
 
-            // if the stage has not been homed, disable it
+            // if the stage has not been homed, disable the GUI
             if (!homed && !stage_disabled) {
                 ImGui::BeginDisabled();
                 stage_disabled = true;
