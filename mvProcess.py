@@ -59,7 +59,7 @@ btn_dest.grid(column=0, row=1)
 lbl_dest = tk.Label(text=dest_directory, fg="red")
 lbl_dest.grid(column=1, row=1)
 
-btn_align = tk.Button(text="Destination...", command=set_align)
+btn_align = tk.Button(text="Alignment...", command=set_align)
 btn_align.grid(column=0, row=2)
 lbl_align = tk.Label(text=align_directory, fg="red")
 lbl_align.grid(column=1, row=2)

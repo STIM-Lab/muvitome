@@ -61,6 +61,8 @@ add_executable(muvitome
 				thorlabs/TLDC4100.h
 				thorlabs/vpptype.h
 				ImGuiFileDialog/ImGuiFileDialog.cpp
+				serialib.h
+				serialib.cpp
 )
 
 target_link_libraries(muvitome

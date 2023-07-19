@@ -1,22 +1,52 @@
 #include <iostream>
 #include <fstream>
 #include <filesystem>
-
 #include <Windows.h>
-
 #include <tira/hardware/ThorlabsCamera.h>
 #include <tira/hardware/ThorlabsKinesis.h>
-
 #include <thorlabs/TLDC4100.h>
 
+//these is a libraryg that Max added to the program
+#include <serialib.h> //this is not attached to vcpkg and will have to be manually updated from github if needed.
+                      //handles serial/COM communication from the arduino 
+#include <string>
+#include <stdio.h>
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h> // Will drag system OpenGL headers
+#ifndef IMGUI_DEFINE_MATH_OPERATORS
+    #define IMGUI_DEFINE_MATH_OPERATORS
+#endif // IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui.h"
+#include "imgui_internal.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 #include "ImGuiFileDialog/ImGuiFileDialog.h"
 #include "tira/graphics_gl.h"
+
+
+//this is stuff that Max added. This is how the serialib.cpp library opens serial/COM ports. The arduino is almost always attached to COM3.
+#if defined (_WIN32) || defined(_WIN64)
+//for serial ports above "COM9", we must use this extended syntax of "\\.\COMx".
+//also works for COM0 to COM9.
+//https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilea?redirectedfrom=MSDN#communications-resources
+#define SERIAL_PORT "\\\\.\\COM4" //change this if using a different COM port
+#endif
+#if defined (__linux__) || defined(__APPLE__)
+#define SERIAL_PORT "/dev/ttyACM0"
+#endif
+//
+
+//stuff that max added: to open serial port
+serialib serial;                                     //Initialize serial object to use with the serialib library
+bool automatic_mode = false;                         //Boolean to tell the program that we want to run using the automated system I have been developing.
+
+
+//also stuff that Max added: global control variables
+bool light_on = 1;                                      //is the microtome indicator light on? Light off = microtome is currently cutting a slice
+bool light_changed = 0;                                 // has the microtome light changed?
+
+int g_new_section_ready = 0;                            //are we ready to take a section?
 
 GLFWwindow* window;                                     // pointer to the GLFW window that will be created (used in GLFW calls to request properties)
 const char* glsl_version = "#version 130";              // specify the version of GLSL
@@ -64,7 +94,7 @@ std::string SettingsFile = "default.txt";               // file used to load and
 int SampleImageCount = 0;
 
 std::vector<tira::image<unsigned char>> ImageQueue;     // stores the current mosaic as a sequence of images
-enum Command {Move, Image};
+enum Command {Move, Image, Cut};
 std::queue<Command> CommandQueue;                     // stores the current commands for collecting a mosaic
 
 bool homed = false;                                     // flag identifies whether or not the stage has been homed this session
@@ -273,10 +303,14 @@ void ProcessCommandQueue() {
         CommandQueue.pop();
         return;
     }
+    else if (CommandQueue.front() == Command::Cut) {
+        //tell microtome to cut here
+        serial.writeChar('c');
+        CommandQueue.pop();
+        return;
+    }
     
 }
-
-
 
 /// <summary>
 /// This function renders the user interface every frame
@@ -351,6 +385,12 @@ void RenderUI() {
             if (!homed && !stage_disabled) {
                 ImGui::BeginDisabled();
                 stage_disabled = true;
+            }
+
+            //MAX ADDED, check the automatic mode checkbox if want use the automated system I've been developing
+            if (ImGui::Checkbox("Automatic mode?", &automatic_mode)) {
+                light_changed = 1;
+                
             }
 
             // Collect mosaics
@@ -578,9 +618,44 @@ void InitPresets() {
     Presets.push_back(x40);
 }
 
+//function that Max added to open the serial port that the arduino input is passed in from
+char openSerial() {
+    char errorOpening = serial.openDevice(SERIAL_PORT, 9600);
+    // If connection fails, return the error code otherwise, display a success message
+    if (errorOpening != 1) return errorOpening;
+        printf("Successful connection to %s\n", SERIAL_PORT);
+}
+
+//function that Max added to read the status of the indicator light from the arduino
+void UpdateLightFromArduino() {
+
+    char status;
+
+    //// read a character (return 0 if there is no character)
+    bool char_read = serial.readChar(&status, 1);       // get the current status from the Arduino
+
+    if(char_read == 0) return;                          // if there is no data from the Arduino, then nothing has changed
+
+    if (char_read == 1) {                               // if the Arduino has submitted data
+        if (status == '0') {                            // if the Arduino passed a character '0', then the light is off
+            if (light_on) {                             // if the light variable is currently ON
+                light_on = false;                       //      turn the light variable OFF
+                light_changed = true;                   //      indicate that the light has changed
+            }
+        }
+        else {                                          // if the Arduno passes a character that ISN'T '0', then the light is on
+            if (!light_on) {                            // if the light variable is currently OFF
+                light_on = true;                        //      turn the light variable ON
+                light_changed = true;                   //      indicate that the light has changed
+            }
+        }
+    }
+}
+
 int main(int argc, char** argv) {
 
-    
+    openSerial(); //Open the serial port--do I need to assign the error code to some variable? see warning message
+
     // Initialize hardware
 	camera.Init();
     stage.Init(0, 70);
@@ -629,33 +704,32 @@ int main(int argc, char** argv) {
 
     InitPresets();
 
-
     // Main loop
     while (!glfwWindowShouldClose(window)){
 
         
+
         glfwPollEvents();                                       // Poll and handle events (inputs, window resize, etc.)
+        
+        if (automatic_mode && CommandQueue.empty()) {           // if Automatic Mode is ON and the command queue is empty (we can start a new mosaic)
 
-        /// MAX:
-        // create a global variable new_section_ready = 0
-        // create a global variable light_on = 1
-
-        // CHECK ARDUINO:
-        //  IF the arduino says the light is on AND light_on == 0
-        //  THEN:
-        //      light_on = 1
-        //      new_section_ready = 1
-        //  IF the arduino says the light is off AND light_on == 1
-        //  THEN:
-        //      light_on = 0
-        //      new_section_ready = 0
-
-        // SEE IF WE CAN START A MOSAIC:
-        //  IF new_section_ready = 1
-        //  THEN start a mosiac:
-        //      new_section_ready = 0
-        //      BEGIN MOSAIC
-
+            UpdateLightFromArduino();                           // Check the Arduino and update the light status
+            if (light_changed) {
+                if (light_on) {                                 // if the light changed to ON
+                    std::cout << "Light Just Turned ON" << std::endl;
+                    BeginMosaic();
+                    light_changed = false;
+                    CommandQueue.push(Command::Cut);
+                    
+                }
+                if (!light_on) {                                // if the light changed to OFF
+                    // do nothing
+                    std::cout << "Light Just Turned OFF" << std::endl;
+                    light_changed = false;
+                }
+            }
+        }
+            
         if (camera_live) {
             camera.Snap();
             LiveImage = camera.getImage8();
@@ -751,6 +825,7 @@ int main(int argc, char** argv) {
 
     camera.Destroy();
     stage.Destroy();
+    serial.closeDevice();
 
     return 0;
 	
