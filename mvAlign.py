@@ -150,8 +150,10 @@ def ApplyImageOffsetsY(in_directory, out_directory, offsets):
     
     
 #directory = "C:\\Users\\david\\Desktop\\muvitome\\test"  
-#in_directory = "C:\\Users\\david\\Desktop\\muvitome\\raw\\2023_01_04_10_43_53_300SilverDetail_1"
-#out_directory = "C:\\Users\\david\\Desktop\\out"  
+in_directory = "D:\\Dropbox\\todo\\muvitome_phantoms\\liver_1um_15x"
+out_directory = "C:\\Users\\david\\Desktop\\out"  
+offsets = CalculateImageOffsetListY(in_directory, N=100, sigma=0)
+ApplyImageOffsetsY(in_directory, out_directory, offsets)
 
 
 #mvc.CorrectIllumination(in_directory, out_directory)
