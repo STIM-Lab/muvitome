@@ -30,7 +30,7 @@
 //for serial ports above "COM9", we must use this extended syntax of "\\.\COMx".
 //also works for COM0 to COM9.
 //https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilea?redirectedfrom=MSDN#communications-resources
-#define SERIAL_PORT "\\\\.\\COM6" //change this if using a different COM port
+#define SERIAL_PORT "\\\\.\\COM5" //change this if using a different COM port
 #endif
 #if defined (__linux__) || defined(__APPLE__)
 #define SERIAL_PORT "/dev/ttyACM0"
@@ -40,13 +40,14 @@
 //stuff that max added: to open serial port
 serialib serial;                                     //Initialize serial object to use with the serialib library
 bool automatic_mode = false;                         //Boolean to tell the program that we want to run using the automated system I have been developing.
-
+int red = 0xFF000;
 
 //also stuff that Max added: global control variables
 bool light_on = 1;                                      //is the microtome indicator light on? Light off = microtome is currently cutting a slice
 bool light_changed = 0;                                 // has the microtome light changed?
 
 int g_new_section_ready = 0;                            //are we ready to take a section?
+int image_counter;                          //arbitrairly large initialization
 
 GLFWwindow* window;                                     // pointer to the GLFW window that will be created (used in GLFW calls to request properties)
 const char* glsl_version = "#version 130";              // specify the version of GLSL
@@ -380,6 +381,10 @@ void RenderUI() {
                 ImGui::Checkbox("ARE YOU SURE?", &homed);
                 ImGui::EndPopup();
             }
+            ImGui::SameLine();
+            if (ImGui::Button("Auto STOP")) {
+                automatic_mode = false;
+            }
 
             // if the stage has not been homed, disable it
             if (!homed && !stage_disabled) {
@@ -388,18 +393,23 @@ void RenderUI() {
             }
 
             //MAX ADDED, check the automatic mode checkbox if want use the automated system I've been developing
-            if (ImGui::Checkbox("Automatic mode?", &automatic_mode)) {
+            if (ImGui::Button("Auto START")) {
+                automatic_mode = true;
                 light_changed = 1;
-                
             }
             
             ImGui::SameLine();
-            if (ImGui::Button("Single Slice"))                              //Button to make a slice (double-press the start/stop button)
+            if (ImGui::Button("Single Slice")) {                              //Button to make a slice (double-press the start/stop button)
                 serial.writeChar('c');
+            }
 
             ImGui::SameLine();
-            if (ImGui::Button("Single Press"))                              //Button to press the start/stop button a single time
+            if (ImGui::Button("Single Press")) {                              //Button to press the start/stop button a single time
                 serial.writeChar('p');
+            }
+
+            ImGui::SetNextItemWidth(ImGui::GetWindowWidth() * 0.20f);
+            ImGui::InputInt("Maximum # of Images", &image_counter);
 
             // Collect mosaics
             if (camera_live) camera_disabled = true;
@@ -719,7 +729,7 @@ int main(int argc, char** argv) {
 
         glfwPollEvents();                                       // Poll and handle events (inputs, window resize, etc.)
         
-        if (automatic_mode && CommandQueue.empty()) {           // if Automatic Mode is ON and the command queue is empty (we can start a new mosaic)
+        if (automatic_mode && CommandQueue.empty() && image_counter > 0) {           // if Automatic Mode is ON and the command queue is empty (we can start a new mosaic)
 
             UpdateLightFromArduino();                           // Check the Arduino and update the light status
             if (light_changed) {
@@ -727,6 +737,7 @@ int main(int argc, char** argv) {
                     //std::cout << "Light Just Turned ON" << std::endl;
                     BeginMosaic();
                     light_changed = false;
+                    image_counter--;
                     CommandQueue.push(Command::Cut);
                     
                 }

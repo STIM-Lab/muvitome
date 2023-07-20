@@ -1,4 +1,4 @@
-8 /#include <Wire.h>
+#include <Wire.h>
 #include "Adafruit_TCS34725.h"
 const int relay1 = 3;   //Arduino pin that triggers relay #1 (aka relay 3)
 const int relay2 = 2;   //Arduino pin that triggers relay #2 (aka relay 4)
@@ -69,7 +69,7 @@ if (red < 200 && light_on == 1){ //If the light is OFF, we send a 0 to the seria
 
 if (Serial.available()){         //When MUVitome is ready to take a cut, it sends a "c" to the arduino via the serial port 
   char ch = Serial.read();
-  if (ch = 'c'){                 //If we read a "c", we extend/retract the actuator twice to press the start/stop button
+  if (ch == 'c'){                 //If we read a "c", we extend/retract the actuator twice to press the start/stop button
     extendActuator();
     delay(100);                  //IMPORTANT: The delay() is how long we drive the actuator forward/backwards. 
     stopActuator();              //I found 100ms to be the right amount when the retracted actuator head is flush with the bottom of its holder,
@@ -87,7 +87,7 @@ if (Serial.available()){         //When MUVitome is ready to take a cut, it send
     stopActuator();
   }
 
-  if (ch = 'p'){                //If we send a "p" to the arduino, the actuator presses the start/stop button once. 
+  else if (ch == 'p'){                //If we send a "p" to the arduino, the actuator presses the start/stop button once. 
     extendActuator();           //This will not trigger a cut
     delay(100);
     stopActuator();
