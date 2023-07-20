@@ -25,15 +25,15 @@
 #include "tira/graphics_gl.h"
 
 
-//this is stuff that Max added. This is how the serialib.cpp library opens serial/COM ports. The arduino is almost always attached to COM3.
+//this is stuff that Max added. This is how the serialib.cpp library opens serial/COM ports.
 #if defined (_WIN32) || defined(_WIN64)
-//for serial ports above "COM9", we must use this extended syntax of "\\.\COMx".
-//also works for COM0 to COM9.
-//https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilea?redirectedfrom=MSDN#communications-resources
-#define SERIAL_PORT "\\\\.\\COM6" //change this if using a different COM port
-#endif
-#if defined (__linux__) || defined(__APPLE__)
-#define SERIAL_PORT "/dev/ttyACM0"
+////for serial ports above "COM9", we must use this extended syntax of "\\.\COMx".
+////also works for COM0 to COM9.
+////https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilea?redirectedfrom=MSDN#communications-resources
+//#define SERIAL_PORT "\\\\.\\COM" //change this if using a different COM port
+//#endif
+//#if defined (__linux__) || defined(__APPLE__)
+//#define SERIAL_PORT "/dev/ttyACM0"
 #endif
 //
 
@@ -337,6 +337,11 @@ void RenderUI() {
         if (ImGui::Button("Image Repository"))
             ImGuiFileDialog::Instance()->OpenDialog("ChooseDirDlgKey", "Choose a Directory", nullptr, ".");
 
+        ImGui::SameLine();
+        if (ImGui::Button("Auto STOP")) {
+            automatic_mode = false;
+        }
+
         // display
         if (ImGuiFileDialog::Instance()->Display("ChooseDirDlgKey"))
         {
@@ -380,10 +385,6 @@ void RenderUI() {
             if (ImGui::BeginPopup("AreYouSure")) {
                 ImGui::Checkbox("ARE YOU SURE?", &homed);
                 ImGui::EndPopup();
-            }
-            ImGui::SameLine();
-            if (ImGui::Button("Auto STOP")) {
-                automatic_mode = false;
             }
 
             // if the stage has not been homed, disable it
@@ -638,11 +639,37 @@ void InitPresets() {
 
 //function that Max added to open the serial port that the arduino input is passed in from
 char openSerial() {
-    char errorOpening = serial.openDevice(SERIAL_PORT, 9600);
-    // If connection fails, return the error code otherwise, display a success message
-    if (errorOpening != 1) return errorOpening;
-        printf("Successful connection to %s\n", SERIAL_PORT);   //If a message other than "successful connection" is printed, then the arduino is not successfuly connected.
+    unsigned int serial_port = 2;
+    bool serial_connected = false;
+
+    while (serial_connected == false && serial_port < 10) {
+        std::string com_port = "\\\\.\\COM";
+        com_port += std::to_string(serial_port);
+        char errorOpening = serial.openDevice(com_port.c_str(), 9600);
+
+        if (errorOpening == 1) {
+            std::cout << "Successful connection to " << com_port << '\n';
+            serial_connected = true;
+        }
+
+        else if (errorOpening == -1) {
+            std::cout << "I tried" << '\n';
+            serial_port++;
+            continue;
+        }
+        else if (errorOpening != 1 && errorOpening != -1)
+            return errorOpening;
+    }
+    
+    //// If connection fails, return the error code otherwise, display a success message
+    //if (errorOpening != 1) return errorOpening;
+    //       //If a message other than "successful connection" is printed, then the arduino is not successfuly connected.
 }
+
+//char errorOpening = serial.openDevice(SERIAL_PORT, 9600);
+//// If connection fails, return the error code otherwise, display a success message
+//if (errorOpening != 1) return errorOpening;
+//printf("Successful connection to %s\n", SERIAL_PORT);   //If a message other than "successful connection" is printed, then the arduino is not successfuly connected.
 
 //function that Max added to read the status of the indicator light from the arduino
 void UpdateLightFromArduino() {
