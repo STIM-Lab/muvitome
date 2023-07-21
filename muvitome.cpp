@@ -25,28 +25,29 @@
 #include "tira/graphics_gl.h"
 
 
-//this is stuff that Max added. This is how the serialib.cpp library opens serial/COM ports. The arduino is almost always attached to COM3.
+//this is stuff that Max added. This is how the serialib.cpp library opens serial/COM ports.
 #if defined (_WIN32) || defined(_WIN64)
-//for serial ports above "COM9", we must use this extended syntax of "\\.\COMx".
-//also works for COM0 to COM9.
-//https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilea?redirectedfrom=MSDN#communications-resources
-#define SERIAL_PORT "\\\\.\\COM6" //change this if using a different COM port
-#endif
-#if defined (__linux__) || defined(__APPLE__)
-#define SERIAL_PORT "/dev/ttyACM0"
+////for serial ports above "COM9", we must use this extended syntax of "\\.\COMx".
+////also works for COM0 to COM9.
+////https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilea?redirectedfrom=MSDN#communications-resources
+//#define SERIAL_PORT "\\\\.\\COM" //change this if using a different COM port
+//#endif
+//#if defined (__linux__) || defined(__APPLE__)
+//#define SERIAL_PORT "/dev/ttyACM0"
 #endif
 //
 
 //stuff that max added: to open serial port
 serialib serial;                                     //Initialize serial object to use with the serialib library
 bool automatic_mode = false;                         //Boolean to tell the program that we want to run using the automated system I have been developing.
-
+//ImVec4 red = ImVec4(0.92f, 0.11f, 0.05f, 1.00f);     //specifies the color red to make colored buttons in ImGui (ImVec4 goes red, green, blue, alpha)       
 
 //also stuff that Max added: global control variables
 bool light_on = 1;                                      //is the microtome indicator light on? Light off = microtome is currently cutting a slice
 bool light_changed = 0;                                 // has the microtome light changed?
 
 int g_new_section_ready = 0;                            //are we ready to take a section?
+int image_counter;                          //arbitrairly large initialization
 
 GLFWwindow* window;                                     // pointer to the GLFW window that will be created (used in GLFW calls to request properties)
 const char* glsl_version = "#version 130";              // specify the version of GLSL
@@ -321,7 +322,14 @@ void RenderUI() {
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
-    
+    ImGui::Begin("MUVitome Control");                                   // Create a window called "Hello, world!" and append into it.
+    //if (ImGui::ColorButton("STOP", red, NULL, ImVec2{256, 128 /* try to guess... */ })){
+    if(ImGui::Button("STOP")){
+        automatic_mode = false;
+        while (CommandQueue.empty() == false) {
+            CommandQueue.pop();
+        }
+    }
 
     bool DisableAll = false;
     if (CommandQueue.size() != 0) DisableAll = true;
@@ -331,7 +339,6 @@ void RenderUI() {
         static float f = 0.0f;
         static int counter = 0;
 
-        ImGui::Begin("MUVitome Control");                                   // Create a window called "Hello, world!" and append into it.
         // open Dialog Simple
         if (ImGui::Button("Image Repository"))
             ImGuiFileDialog::Instance()->OpenDialog("ChooseDirDlgKey", "Choose a Directory", nullptr, ".");
@@ -388,18 +395,23 @@ void RenderUI() {
             }
 
             //MAX ADDED, check the automatic mode checkbox if want use the automated system I've been developing
-            if (ImGui::Checkbox("Automatic mode?", &automatic_mode)) {
+            if (ImGui::Button("Auto START")) {
+                automatic_mode = true;
                 light_changed = 1;
-                
             }
             
             ImGui::SameLine();
-            if (ImGui::Button("Single Slice"))                              //Button to make a slice (double-press the start/stop button)
+            if (ImGui::Button("Single Slice")) {                              //Button to make a slice (double-press the start/stop button)
                 serial.writeChar('c');
+            }
 
             ImGui::SameLine();
-            if (ImGui::Button("Single Press"))                              //Button to press the start/stop button a single time
+            if (ImGui::Button("Single Press")) {                              //Button to press the start/stop button a single time
                 serial.writeChar('p');
+            }
+
+            ImGui::SetNextItemWidth(ImGui::GetWindowWidth() * 0.20f);
+            ImGui::InputInt("Maximum # of Images", &image_counter);
 
             // Collect mosaics
             if (camera_live) camera_disabled = true;
@@ -627,12 +639,42 @@ void InitPresets() {
 }
 
 //function that Max added to open the serial port that the arduino input is passed in from
+//Iterates through serial ports 2-9 looking for the arduino
+//Ports 0 and 1 are "special," and I have never seen the arduino assigned to one of these ports in all my testing, which is why it starts looking at serial port 2.
 char openSerial() {
-    char errorOpening = serial.openDevice(SERIAL_PORT, 9600);
-    // If connection fails, return the error code otherwise, display a success message
-    if (errorOpening != 1) return errorOpening;
-        printf("Successful connection to %s\n", SERIAL_PORT);   //If a message other than "successful connection" is printed, then the arduino is not successfuly connected.
+    unsigned int serial_port = 2; 
+    bool serial_connected = false;
+
+    while (serial_connected == false && serial_port < 10) {
+        std::string com_port = "\\\\.\\COM";
+        com_port += std::to_string(serial_port);
+        char errorOpening = serial.openDevice(com_port.c_str(), 9600);
+
+        if (errorOpening == 1) {
+            std::cout << "Successful connection to " << com_port << '\n';
+            serial_connected = true;
+        }
+
+        else if (errorOpening == -1) { //"-1" is the code for device not detected, any other code means there is some other error with the serial port
+            serial_port++;
+            continue;
+        }
+        else if (errorOpening != 1 && errorOpening != -1)
+            return errorOpening;
+    }
+    
+    if (serial_port == 10) {
+        std::cout << "No COM devices detected" << '\n';
+    }
+    //// If connection fails, return the error code otherwise, display a success message
+    //if (errorOpening != 1) return errorOpening;
+    //       //If a message other than "successful connection" is printed, then the arduino is not successfuly connected.
 }
+
+//char errorOpening = serial.openDevice(SERIAL_PORT, 9600);
+//// If connection fails, return the error code otherwise, display a success message
+//if (errorOpening != 1) return errorOpening;
+//printf("Successful connection to %s\n", SERIAL_PORT);   //If a message other than "successful connection" is printed, then the arduino is not successfuly connected.
 
 //function that Max added to read the status of the indicator light from the arduino
 void UpdateLightFromArduino() {
@@ -719,7 +761,7 @@ int main(int argc, char** argv) {
 
         glfwPollEvents();                                       // Poll and handle events (inputs, window resize, etc.)
         
-        if (automatic_mode && CommandQueue.empty()) {           // if Automatic Mode is ON and the command queue is empty (we can start a new mosaic)
+        if (automatic_mode && CommandQueue.empty() && image_counter > 0) {           // if Automatic Mode is ON and the command queue is empty (we can start a new mosaic)
 
             UpdateLightFromArduino();                           // Check the Arduino and update the light status
             if (light_changed) {
@@ -727,6 +769,7 @@ int main(int argc, char** argv) {
                     //std::cout << "Light Just Turned ON" << std::endl;
                     BeginMosaic();
                     light_changed = false;
+                    image_counter--;
                     CommandQueue.push(Command::Cut);
                     
                 }
