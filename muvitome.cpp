@@ -40,7 +40,7 @@
 //stuff that max added: to open serial port
 serialib serial;                                     //Initialize serial object to use with the serialib library
 bool automatic_mode = false;                         //Boolean to tell the program that we want to run using the automated system I have been developing.
-int red = 0xFF000;
+//ImVec4 red = ImVec4(0.92f, 0.11f, 0.05f, 1.00f);     //specifies the color red to make colored buttons in ImGui (ImVec4 goes red, green, blue, alpha)       
 
 //also stuff that Max added: global control variables
 bool light_on = 1;                                      //is the microtome indicator light on? Light off = microtome is currently cutting a slice
@@ -322,7 +322,14 @@ void RenderUI() {
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
-    
+    ImGui::Begin("MUVitome Control");                                   // Create a window called "Hello, world!" and append into it.
+    //if (ImGui::ColorButton("STOP", red, NULL, ImVec2{256, 128 /* try to guess... */ })){
+    if(ImGui::Button("STOP")){
+        automatic_mode = false;
+        while (CommandQueue.empty() == false) {
+            CommandQueue.pop();
+        }
+    }
 
     bool DisableAll = false;
     if (CommandQueue.size() != 0) DisableAll = true;
@@ -332,15 +339,9 @@ void RenderUI() {
         static float f = 0.0f;
         static int counter = 0;
 
-        ImGui::Begin("MUVitome Control");                                   // Create a window called "Hello, world!" and append into it.
         // open Dialog Simple
         if (ImGui::Button("Image Repository"))
             ImGuiFileDialog::Instance()->OpenDialog("ChooseDirDlgKey", "Choose a Directory", nullptr, ".");
-
-        ImGui::SameLine();
-        if (ImGui::Button("Auto STOP")) {
-            automatic_mode = false;
-        }
 
         // display
         if (ImGuiFileDialog::Instance()->Display("ChooseDirDlgKey"))
@@ -638,8 +639,10 @@ void InitPresets() {
 }
 
 //function that Max added to open the serial port that the arduino input is passed in from
+//Iterates through serial ports 2-9 looking for the arduino
+//Ports 0 and 1 are "special," and I have never seen the arduino assigned to one of these ports in all my testing, which is why it starts looking at serial port 2.
 char openSerial() {
-    unsigned int serial_port = 2;
+    unsigned int serial_port = 2; 
     bool serial_connected = false;
 
     while (serial_connected == false && serial_port < 10) {
@@ -652,8 +655,7 @@ char openSerial() {
             serial_connected = true;
         }
 
-        else if (errorOpening == -1) {
-            std::cout << "I tried" << '\n';
+        else if (errorOpening == -1) { //"-1" is the code for device not detected, any other code means there is some other error with the serial port
             serial_port++;
             continue;
         }
@@ -661,6 +663,9 @@ char openSerial() {
             return errorOpening;
     }
     
+    if (serial_port == 10) {
+        std::cout << "No COM devices detected" << '\n';
+    }
     //// If connection fails, return the error code otherwise, display a success message
     //if (errorOpening != 1) return errorOpening;
     //       //If a message other than "successful connection" is printed, then the arduino is not successfuly connected.
