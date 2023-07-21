@@ -252,6 +252,8 @@ void NewSample() {
 }
 void BeginMosaic() {
     ImageQueue.clear();
+    for (size_t ti = 0; ti < TextureQueue.size(); ti++)
+        TextureQueue[ti].Destroy();
     TextureQueue.clear();                                                       // clear the image and texture queues
 
     for (size_t xi = 0; xi < frames[0]; xi++) {
@@ -317,177 +319,195 @@ void ProcessCommandQueue() {
 /// This function renders the user interface every frame
 /// </summary>
 void RenderUI() {
+
+    bool DisableAll = false;
+
     // Start the Dear ImGui frame
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
+    ///-----------MUVITOME Control Window------------------
     ImGui::Begin("MUVitome Control");                                   // Create a window called "Hello, world!" and append into it.
-    //if (ImGui::ColorButton("STOP", red, NULL, ImVec2{256, 128 /* try to guess... */ })){
-    if(ImGui::Button("STOP")){
-        automatic_mode = false;
-        while (CommandQueue.empty() == false) {
-            CommandQueue.pop();
-        }
-    }
-
-    bool DisableAll = false;
-    if (CommandQueue.size() != 0) DisableAll = true;
-    if(DisableAll) ImGui::BeginDisabled();
-
     {
-        static float f = 0.0f;
-        static int counter = 0;
 
-        // open Dialog Simple
-        if (ImGui::Button("Image Repository"))
-            ImGuiFileDialog::Instance()->OpenDialog("ChooseDirDlgKey", "Choose a Directory", nullptr, ".");
+        //if (ImGui::ColorButton("STOP", red, NULL, ImVec2{256, 128 /* try to guess... */ })){
+        if(ImGui::Button("STOP")){
+            automatic_mode = false;
+            while (CommandQueue.empty() == false) {
+                CommandQueue.pop();
+            }
+        }
 
-        // display
-        if (ImGuiFileDialog::Instance()->Display("ChooseDirDlgKey"))
-        {
-            // action if OK
-            if (ImGuiFileDialog::Instance()->IsOk())
+        
+
+        ///--------MUVITOME CONTROLS DISABLED DURING IMAGING--------
+        if (CommandQueue.size() != 0) DisableAll = true;
+        {            
+            if (DisableAll) ImGui::BeginDisabled();
+
+            static float f = 0.0f;
+            static int counter = 0;
+
+            // open Dialog Simple
+            if (ImGui::Button("Image Repository"))
+                ImGuiFileDialog::Instance()->OpenDialog("ChooseDirDlgKey", "Choose a Directory", nullptr, ".");
+
+            // display
+            if (ImGuiFileDialog::Instance()->Display("ChooseDirDlgKey"))
             {
-                RepositoryDirectory = ImGuiFileDialog::Instance()->GetCurrentPath();
-                NewSample();
-                SaveSettings();
+                // action if OK
+                if (ImGuiFileDialog::Instance()->IsOk())
+                {
+                    RepositoryDirectory = ImGuiFileDialog::Instance()->GetCurrentPath();
+                    NewSample();
+                    SaveSettings();
+                }
+                // close
+                ImGuiFileDialog::Instance()->Close();
             }
-            // close
-            ImGuiFileDialog::Instance()->Close();
-        }
-        
-        // Specify repository directories
-        ImGui::Text(RepositoryDirectory.c_str());
-        ImGui::Text(SamplePrefix.c_str());
-        ImGui::SameLine();
-        static char buffer[1024];
-        if (ImGui::InputText("##SampleNote", buffer, 1024, ImGuiInputTextFlags_EnterReturnsTrue)) {
-            SampleNote = buffer;
-            NewSample();
-        }
 
-        {                                                       // begin stage control
-            bool stage_disabled = false;
-            bool camera_disabled = false;
-            if (stage.isMoving()) {
-                ImGui::BeginDisabled();
-                stage_disabled = true;
-            }
-            if (ImGui::Button("Home")) {
-                stage.Home(1);
-                stage.Home(2);
-                homed = true;
-            }
+            // Specify repository directories
+            ImGui::Text(RepositoryDirectory.c_str());
+            ImGui::Text(SamplePrefix.c_str());
             ImGui::SameLine();
-            if (ImGui::Button("Already Homed")) {
-                ImGui::OpenPopup("AreYouSure");
-            }
-            if (ImGui::BeginPopup("AreYouSure")) {
-                ImGui::Checkbox("ARE YOU SURE?", &homed);
-                ImGui::EndPopup();
-            }
-
-            // if the stage has not been homed, disable the GUI
-            if (!homed && !stage_disabled) {
-                ImGui::BeginDisabled();
-                stage_disabled = true;
-            }
-
-            //MAX ADDED, check the automatic mode checkbox if want use the automated system I've been developing
-            if (ImGui::Button("Auto START")) {
-                automatic_mode = true;
-                light_changed = 1;
-            }
-            
-            ImGui::SameLine();
-            if (ImGui::Button("Single Slice")) {                              //Button to make a slice (double-press the start/stop button)
-                serial.writeChar('c');
-            }
-
-            ImGui::SameLine();
-            if (ImGui::Button("Single Press")) {                              //Button to press the start/stop button a single time
-                serial.writeChar('p');
-            }
-
-            ImGui::SetNextItemWidth(ImGui::GetWindowWidth() * 0.20f);
-            ImGui::InputInt("Maximum # of Images", &image_counter);
-
-            // Collect mosaics
-            if (camera_live) camera_disabled = true;
-
-            if (camera_disabled) ImGui::BeginDisabled();
-            if (ImGui::Button("Mosaic")) {
-                Sleep(camera_delay * 1000);
-                BeginMosaic();
-            }
-            mosaic_hovered = false;
-            if (ImGui::IsItemHovered())
-                mosaic_hovered = true;
-            
-            if (camera_disabled) ImGui::EndDisabled();
-            ImGui::SameLine();
-            ImGui::Text("Section %d, Image %d / %d", SampleImageCount, ImageQueue.size(), frames[0] * frames[1]);
-            // X minimum and max position moves
-            if (ImGui::Button("<-##xmin")) {
-                stage.MoveToX(x_range[0]);
-            }
-            ImGui::SameLine();
-            if (ImGui::Button("->##xmax")) {
-                stage.MoveToX(x_range[1]);
-            }
-            ImGui::SameLine();
-            if (ImGui::SliderFloat2("[X]", x_range, 0.0f, 100.0f, "%.2fmm")) {
-                if (x_range[1] < x_range[0]) x_range[0] = x_range[1];
+            static char buffer[1024];
+            if (ImGui::InputText("##SampleNote", buffer, 1024, ImGuiInputTextFlags_EnterReturnsTrue)) {
+                SampleNote = buffer;
                 NewSample();
             }
-            
 
-            // Y minimum and max position moves
-            if (ImGui::Button("<-##ymin")) {
-                stage.MoveToY(y_range[0]);
-            }
-            ImGui::SameLine();
-            if (ImGui::Button("->##ymax")) {
-                stage.MoveToY(y_range[1]);
-            }
-            ImGui::SameLine();
-            if (ImGui::SliderFloat2("[Y]", y_range, 0.0f, 100.0f, "%.2fmm")) {
-                if (y_range[1] < y_range[0]) y_range[0] = y_range[1];
-                NewSample();
-            }
-            
+            ///-------------MUVITOME STAGE CONTROLS DISABLED DURING MOTION
+            {
+                bool stage_disabled = false;
+                bool camera_disabled = false;
+                if (stage.isMoving()) {
+                    ImGui::BeginDisabled();
+                    stage_disabled = true;
+                }
 
-            // Center Button
-            if (ImGui::Button("Center")) {
-                stage.MoveToY((y_range[1] - y_range[0]) / 2.0 + y_range[0]);
-                stage.MoveToX((x_range[1] - x_range[0]) / 2.0 + x_range[0]);
-            }
-            
+                if (ImGui::Button("Home")) {
+                    stage.Home(1);
+                    stage.Home(2);
+                    homed = true;
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Already Homed")) {
+                    ImGui::OpenPopup("AreYouSure");
+                }
+                if (ImGui::BeginPopup("AreYouSure")) {
+                    ImGui::Checkbox("ARE YOU SURE?", &homed);
+                    ImGui::EndPopup();
+                }
 
-            ImGui::Text("Stage Position");
-            float stage_pos[2];
-            stage_pos[0] = stage.getPosition(1);
-            stage_pos[1] = stage.getPosition(2);
-            
-            if (ImGui::InputFloat("X", &stage_pos[0], 0.1, 1, "%.1f mm")) {
-                stage.MoveToX(stage_pos[0]);
-            }
-            if (ImGui::InputFloat("Y", &stage_pos[1], 0.1, 1, "%.1f mm")) {
-                stage.MoveToY(stage_pos[1]);
-            }
+                // if the stage has not been homed, disable the GUI
+                if (!homed && !stage_disabled) {
+                    ImGui::BeginDisabled();
+                    stage_disabled = true;
+                }
 
-            if (stage_disabled) ImGui::EndDisabled();
-            
-            UpdateFrames();
-            ImGui::Text("Frames: %i x %i", frames[0], frames[1]);
-        }                                                       // end stage control
-        
-        stage.UpdateStatus();
-        
-        ImGui::End();                                                           // End MUVitome control
+                //MAX ADDED, check the automatic mode checkbox if want use the automated system I've been developing
+                if (ImGui::Button("Auto START")) {
+                    automatic_mode = true;
+                    light_changed = 1;
+                }
 
+                ImGui::SameLine();
+                if (ImGui::Button("Single Slice")) {                              //Button to make a slice (double-press the start/stop button)
+                    serial.writeChar('c');
+                }
+
+                ImGui::SameLine();
+                if (ImGui::Button("Single Press")) {                              //Button to press the start/stop button a single time
+                    serial.writeChar('p');
+                }
+
+                ImGui::SetNextItemWidth(ImGui::GetWindowWidth() * 0.20f);
+                ImGui::InputInt("Maximum # of Images", &image_counter);
+
+                // Collect mosaics
+                if (camera_live) camera_disabled = true;
+
+                if (camera_disabled) ImGui::BeginDisabled();
+                if (ImGui::Button("Mosaic")) {
+                    Sleep(camera_delay * 1000);
+                    BeginMosaic();
+                }
+                mosaic_hovered = false;
+                if (ImGui::IsItemHovered())
+                    mosaic_hovered = true;
+
+                if (camera_disabled) ImGui::EndDisabled();
+                ImGui::SameLine();
+                ImGui::Text("Section %d, Image %d / %d", SampleImageCount, ImageQueue.size(), frames[0] * frames[1]);
+                // X minimum and max position moves
+                if (ImGui::Button("<-##xmin")) {
+                    stage.MoveToX(x_range[0]);
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("->##xmax")) {
+                    stage.MoveToX(x_range[1]);
+                }
+                ImGui::SameLine();
+                if (ImGui::SliderFloat2("[X]", x_range, 0.0f, 100.0f, "%.2fmm")) {
+                    if (x_range[1] < x_range[0]) x_range[0] = x_range[1];
+                    NewSample();
+                }
+
+
+                // Y minimum and max position moves
+                if (ImGui::Button("<-##ymin")) {
+                    stage.MoveToY(y_range[0]);
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("->##ymax")) {
+                    stage.MoveToY(y_range[1]);
+                }
+                ImGui::SameLine();
+                if (ImGui::SliderFloat2("[Y]", y_range, 0.0f, 100.0f, "%.2fmm")) {
+                    if (y_range[1] < y_range[0]) y_range[0] = y_range[1];
+                    NewSample();
+                }
+
+
+                // Center Button
+                if (ImGui::Button("Center")) {
+                    stage.MoveToY((y_range[1] - y_range[0]) / 2.0 + y_range[0]);
+                    stage.MoveToX((x_range[1] - x_range[0]) / 2.0 + x_range[0]);
+                }
+
+
+                ImGui::Text("Stage Position");
+                float stage_pos[2];
+                stage_pos[0] = stage.getPosition(1);
+                stage_pos[1] = stage.getPosition(2);
+
+                if (ImGui::InputFloat("X", &stage_pos[0], 0.1, 1, "%.1f mm")) {
+                    stage.MoveToX(stage_pos[0]);
+                }
+                if (ImGui::InputFloat("Y", &stage_pos[1], 0.1, 1, "%.1f mm")) {
+                    stage.MoveToY(stage_pos[1]);
+                }
+
+
+
+                UpdateFrames();
+                ImGui::Text("Frames: %i x %i", frames[0], frames[1]);
+
+                if (stage_disabled) ImGui::EndDisabled();
+            } // END -------------MUVITOME STAGE CONTROLS DISABLED DURING MOTION
+
+            stage.UpdateStatus();
+            if (DisableAll) ImGui::EndDisabled();
+        } ///END --------MUVITOME CONTROLS DISABLED DURING IMAGING--------
+
+        ImGui::End();
+    }// End MUVitome control
+
+    ///----------------BEGIN STAGE AND CAMERA SETTINGS
+    {
         ImGui::Begin("Stage and Camera Settings");
+        if (DisableAll) ImGui::BeginDisabled();
         float gui_velocity = stage.getVelocity(2);                                          // get the velocity for the gui
         if (ImGui::InputFloat("velocity", &gui_velocity, 1.0f, 5.0f, "%.0f m/s")) {        // display the velocity and allow the user to change it
             stage.setVelocity(1, gui_velocity);
@@ -542,10 +562,10 @@ void RenderUI() {
         ImGui::Checkbox("Track Stage", &track_stage);
         ImGui::Text("Camera Position: %.1f, %.1f", render_pos[0], render_pos[1]);
 
-        ImGui::End();
         if (DisableAll) ImGui::EndDisabled();
+        ImGui::End();
 
-
+        
     }
 
     //ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);  // Render a separate window showing the FPS
