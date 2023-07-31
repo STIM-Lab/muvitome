@@ -71,8 +71,12 @@ float detector_fov[2] = {1.0f, 0.5f};                   // detector field of vie
 float detector_overlap[2] = { 15.0f, 15.0f };                         // detector overlap (percent)
 int detector_bin = 2;                                   // detector binning (n x n)
 tira::ThorlabsKinesis stage;                            // stage controller
-//tira::ThorlabsKinesis aperture;                         // aperture controller
-float y_range[2] = { 0, 0 };                            // y min and max positions
+//tira::ThorlabsKinesis aperture;                       // aperture controller
+float mosaic_size[2];                                   // stores the current mosaic size
+float mosaic_center[2];                                 // stores the center of the mosaic
+
+
+float y_range[2] = { 0, 0 };                            // dependent variables calculated from mosaic_size and mosaic_center
 float x_range[2] = { 0, 0 };
 int camera_delay = 1;
 int camera_frames = 1;                                  // number of frames to integrate in every snapshot
@@ -145,10 +149,10 @@ void SaveSettings() {
     std::ofstream outfile(SettingsFile);
     outfile << RepositoryDirectory << std::endl;
     outfile << stage.getVelocity(2) << std::endl;
-    outfile << x_range[0] << std::endl;
-    outfile << x_range[1] << std::endl;
-    outfile << y_range[0] << std::endl;
-    outfile << y_range[1] << std::endl;
+    outfile << mosaic_size[0] << std::endl;
+    outfile << mosaic_size[1] << std::endl;
+    outfile << mosaic_center[0] << std::endl;
+    outfile << mosaic_center[1] << std::endl;
     outfile << camera.getExposure() << std::endl;
     outfile << detector_overlap[0] << std::endl;
     outfile << detector_overlap[1] << std::endl;
@@ -172,10 +176,17 @@ void LoadSettings() {
     infile >> velocity;
     stage.setVelocity(1, velocity);
     stage.setVelocity(2, velocity);
-    infile >> x_range[0];
-    infile >> x_range[1];
-    infile >> y_range[0];
-    infile >> y_range[1];
+    infile >> mosaic_size[0];
+    infile >> mosaic_size[1];
+    infile >> mosaic_center[0];
+    infile >> mosaic_center[1];
+
+    // calculate the dependent variables for the mosaic edges
+    x_range[0] = mosaic_center[0] - mosaic_size[0];
+    x_range[1] = mosaic_center[0] + mosaic_size[0];
+    y_range[0] = mosaic_center[1] - mosaic_size[1];
+    y_range[1] = mosaic_center[1] + mosaic_size[1];
+
     float exposure;
     infile >> exposure;
     camera.setExposure(exposure);
@@ -227,6 +238,10 @@ void SaveMosaic() {
     ImageQueue.clear();
     SampleImageCount++;
 }
+
+/// <summary>
+/// Update the number of frames in the mosaic
+/// </summary>
 void UpdateFrames() {
     float sx = detector_fov[0] - (detector_fov[0] * detector_overlap[0] * 0.01);
     float sy = detector_fov[1] - (detector_fov[1] * detector_overlap[1] * 0.01);
@@ -440,6 +455,33 @@ void RenderUI() {
                 if (camera_disabled) ImGui::EndDisabled();
                 ImGui::SameLine();
                 ImGui::Text("Section %d, Image %d / %d", SampleImageCount, ImageQueue.size(), frames[0] * frames[1]);
+
+                
+                if (ImGui::SliderFloat2("Mosaic Size", mosaic_size, 0.0f, 25.0f)) {              // set the mosaic size
+                    if (mosaic_center[0] - mosaic_size[0] < 0.0f) mosaic_size[0] = mosaic_center[0];
+                    if (mosaic_center[1] - mosaic_size[1] < 0.0f) mosaic_size[1] = mosaic_center[1];
+                    if (mosaic_center[0] + mosaic_size[0] > 100.0f) mosaic_size[0] = 100.0f - mosaic_center[0];
+                    if (mosaic_center[1] + mosaic_size[1] > 100.0f) mosaic_size[1] = 100.0f - mosaic_center[1];
+                    x_range[0] = mosaic_center[0] - mosaic_size[0];                             // calculate the dependent variables for the mosaic edges
+                    x_range[1] = mosaic_center[0] + mosaic_size[0];
+                    y_range[0] = mosaic_center[1] - mosaic_size[1];
+                    y_range[1] = mosaic_center[1] + mosaic_size[1];
+                    NewSample();
+                }
+                if (ImGui::SliderFloat2("Mosaic Center", mosaic_center, 0.0f, 100.0f)) {              // set the mosaic size
+                    if (mosaic_center[0] - mosaic_size[0] < 0.0f) mosaic_center[0] = mosaic_size[0];
+                    if (mosaic_center[1] - mosaic_size[1] < 0.0f) mosaic_center[1] = mosaic_size[1];
+                    if (mosaic_center[0] + mosaic_size[0] > 100.0f) mosaic_center[0] = 100.0f - mosaic_size[0];
+                    if (mosaic_center[1] + mosaic_size[1] > 100.0f) mosaic_center[1] = 100.0f - mosaic_size[1];
+                    x_range[0] = mosaic_center[0] - mosaic_size[0];                             // calculate the dependent variables for the mosaic edges
+                    x_range[1] = mosaic_center[0] + mosaic_size[0];
+                    y_range[0] = mosaic_center[1] - mosaic_size[1];
+                    y_range[1] = mosaic_center[1] + mosaic_size[1];
+                    NewSample();
+                }
+
+
+
                 // X minimum and max position moves
                 if (ImGui::Button("<-##xmin")) {
                     stage.MoveToX(x_range[0]);
@@ -449,10 +491,9 @@ void RenderUI() {
                     stage.MoveToX(x_range[1]);
                 }
                 ImGui::SameLine();
-                if (ImGui::SliderFloat2("[X]", x_range, 0.0f, 100.0f, "%.2fmm")) {
-                    if (x_range[1] < x_range[0]) x_range[0] = x_range[1];
-                    NewSample();
-                }
+                ImGui::BeginDisabled();
+                ImGui::SliderFloat2("[X]", x_range, 0.0f, 100.0f, "%.2fmm");
+                ImGui::EndDisabled();
 
 
                 // Y minimum and max position moves
@@ -464,10 +505,9 @@ void RenderUI() {
                     stage.MoveToY(y_range[1]);
                 }
                 ImGui::SameLine();
-                if (ImGui::SliderFloat2("[Y]", y_range, 0.0f, 100.0f, "%.2fmm")) {
-                    if (y_range[1] < y_range[0]) y_range[0] = y_range[1];
-                    NewSample();
-                }
+                ImGui::BeginDisabled();
+                ImGui::SliderFloat2("[Y]", y_range, 0.0f, 100.0f, "%.2fmm");
+                ImGui::EndDisabled();
 
 
                 // Center Button
@@ -661,10 +701,30 @@ void InitPresets() {
 //function that Max added to open the serial port that the arduino input is passed in from
 //Iterates through serial ports 2-9 looking for the arduino
 //Ports 0 and 1 are "special," and I have never seen the arduino assigned to one of these ports in all my testing, which is why it starts looking at serial port 2.
-char openSerial() {
-    unsigned int serial_port = 2; 
-    bool serial_connected = false;
+void openSerial() {    
 
+    for (unsigned int serial_port = 2; serial_port <= 10; serial_port++) {
+        std::string com_port = "\\\\.\\COM";                                    // generate the base COM string
+        com_port += std::to_string(serial_port);                                // add a text version of the serial port to the end
+        char errorOpening = serial.openDevice(com_port.c_str(), 9600);          // open the serial port and save any errors
+
+        if (errorOpening == 1) {                                                // a serial port is successfully found
+            std::cout << "Successful connection to " << com_port << '\n';       // output a success message
+            return;
+        }
+        else if (errorOpening == -1) {
+            // no COM port exists
+        }
+        else {                                                                  // some other error found
+            std::cout << "ERROR at COM " << serial_port << ": " << errorOpening << " (examine serial.openDevice())" << std::endl;
+
+        }
+    }
+
+    std::cout << "No COM devices detected" << '\n';
+
+    /*unsigned int serial_port = 2;
+    bool serial_connected = false;
     while (serial_connected == false && serial_port < 10) {
         std::string com_port = "\\\\.\\COM";
         com_port += std::to_string(serial_port);
@@ -686,6 +746,7 @@ char openSerial() {
     if (serial_port == 10) {
         std::cout << "No COM devices detected" << '\n';
     }
+    */
     //// If connection fails, return the error code otherwise, display a success message
     //if (errorOpening != 1) return errorOpening;
     //       //If a message other than "successful connection" is printed, then the arduino is not successfuly connected.
@@ -841,7 +902,7 @@ int main(int argc, char** argv) {
         camera_image_shader.Bind();
         glm::vec3 pos;
         float image_spacing[2];
-        float overlap_fraction[2] = { detector_overlap[0] * 0.01, detector_overlap[1] * 0.01 };
+        float overlap_fraction[2] = { detector_overlap[0] * 0.01f, detector_overlap[1] * 0.01f };
         image_spacing[0] = detector_fov[0] - detector_fov[0] * (overlap_fraction[0]);
         image_spacing[1] = detector_fov[1] - detector_fov[1] * (overlap_fraction[1]);
 
