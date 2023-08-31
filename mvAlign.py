@@ -148,27 +148,6 @@ def ApplyImageOffsetsY(in_directory, out_directory, offsets):
     
     
     
-    
-#directory = "C:\\Users\\david\\Desktop\\muvitome\\test"  
-in_directory = "D:\\Dropbox\\todo\\muvitome_phantoms\\liver_1um_15x"
-out_directory = "C:\\Users\\david\\Desktop\\out"  
-offsets = CalculateImageOffsetListY(in_directory, N=100, sigma=0)
-ApplyImageOffsetsY(in_directory, out_directory, offsets)
 
-
-#mvc.CorrectIllumination(in_directory, out_directory)
-
-
-#in_directory = "C:\\Users\\david\\Desktop\\muvitome\\test_in"
-#in_directory = "C:\\Users\\david\\Desktop\\out\\00000_00000"
-#out_directory = "C:\\Users\\david\\Desktop\\muvitome\\test_out"
-#sigma = 5
-#N = 500
-
-#ImageOffsets = CalculateImageOffsetListY(in_directory, N, sigma)
-#print("Maximum image offset: " + str(np.max(ImageOffsets)) + " (N = " + str(N) + ")")
-
-
-#ApplyImageOffsetsY(in_directory, out_directory, ImageOffsets)
    
 
