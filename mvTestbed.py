@@ -12,8 +12,8 @@ import numpy as np
 # specify the source and destination directory
 # (note that the destination directory will by default contain several copies of the files)
 
-source_directory = "D:/2023_08_24_16_56_35_david_rebooted"
-dest_directory = "D:/2023_08_24_16_56_35_david_rebooted_processed"
+source_directory = "D:/2023_08_15_11_21_0_395NeuNA594"
+dest_directory = "D:/2023_08_15_11_21_0_395NeuNA594_processed"
 if not os.path.exists(dest_directory):
     os.mkdir(dest_directory)
 
@@ -41,5 +41,5 @@ mvm.AssembleMuvitome(dest_directory + "/flat", MosaicFolder, (10, 0))
 #%%
 # ALIGN IMAGES
 # This code aligns the images and stores the result as a new image stack in "aligned"
-offsets = mva.CalculateImageOffsetListY(dest_directory + "/flat/00002_00004", N=100, sigma=3)
+offsets = mva.CalculateImageOffsetListY(dest_directory + "/mosaic", N=100, sigma=3)
 mva.ApplyImageOffsetsY(dest_directory + "/mosaic", dest_directory + "/aligned", offsets)
