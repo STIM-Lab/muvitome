@@ -12,8 +12,8 @@ import numpy as np
 # specify the source and destination directory
 # (note that the destination directory will by default contain several copies of the files)
 
-source_directory = "D:/2023_08_15_11_21_0_395NeuNA594"
-dest_directory = "D:/2023_08_15_11_21_0_395NeuNA594_processed"
+source_directory = "D:/2023_09_04_09_07_59_451_SDB_Xyl"
+dest_directory = "D:/2023_09_04_09_07_59_451_SDB_Xyl_processed"
 if not os.path.exists(dest_directory):
     os.mkdir(dest_directory)
 
@@ -22,8 +22,8 @@ if not os.path.exists(dest_directory):
 # This code calculates a flatfield image for correction by averaging all images in the source directory
 # The flatfield image is stored in the destination directory as a bitmap
 
-F = mvf.AverageMosaic(source_directory, extension="bmp")
-skimage.io.imsave(dest_directory + "/flatfield.bmp", F.astype(np.uint8))
+#F = mvf.AverageMosaic(source_directory, extension="bmp")
+#skimage.io.imsave(dest_directory + "/flatfield.bmp", F.astype(np.uint8))
 
 
 #%%

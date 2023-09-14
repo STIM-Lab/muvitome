@@ -63,6 +63,7 @@ def FlatfieldStack(in_path, out_path, gain = 1.0, flatfield_image = None, extens
         
     m = np.average(np.average(F, 0), 0)
     G = m / F * gain
+    #G[G > 1] = 1
     
     # correct each image in the directory
     if extension is None:

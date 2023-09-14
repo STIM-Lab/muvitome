@@ -76,7 +76,8 @@ def AssembleMuvitome(in_path, out_path, overlap_percent = (0, 0)):
             ic = Columns[i] * OverlappedTileWidth
             Patch = Stitched[ir:ir+InputTileHeight, ic:ic+InputTileWidth, :]
             #Patch = Patch + np.fliplr(Tiles[i])
-            Patch = np.maximum(Patch, np.fliplr(Tiles[i]))
+            Patch[OverlapHeight:, OverlapWidth:] = np.fliplr(Tiles[i])[OverlapHeight:, OverlapWidth:]
+            #Patch = np.maximum(Patch, np.fliplr(Tiles[i]))
             
             Stitched[ir:ir+InputTileHeight, ic:ic+InputTileWidth, :] =  Patch
             #Overlays[ir:ir+InputTileHeight, ic:ic+InputTileWidth] += 1
