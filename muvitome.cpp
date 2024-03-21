@@ -461,7 +461,7 @@ void RenderUI() {
                     if (mosaic_center[0] - mosaic_size[0] < 0.0f) mosaic_size[0] = mosaic_center[0];
                     if (mosaic_center[1] - mosaic_size[1] < 0.0f) mosaic_size[1] = mosaic_center[1];
                     if (mosaic_center[0] + mosaic_size[0] > 100.0f) mosaic_size[0] = 100.0f - mosaic_center[0];
-                    if (mosaic_center[1] + mosaic_size[1] > 100.0f) mosaic_size[1] = 100.0f - mosaic_center[1];
+                    if (mosaic_center[1] + mosaic_size[1] > 150.0f) mosaic_size[1] = 150.0f - mosaic_center[1];
                     x_range[0] = mosaic_center[0] - mosaic_size[0];                             // calculate the dependent variables for the mosaic edges
                     x_range[1] = mosaic_center[0] + mosaic_size[0];
                     y_range[0] = mosaic_center[1] - mosaic_size[1];
@@ -472,7 +472,7 @@ void RenderUI() {
                     if (mosaic_center[0] - mosaic_size[0] < 0.0f) mosaic_center[0] = mosaic_size[0];
                     if (mosaic_center[1] - mosaic_size[1] < 0.0f) mosaic_center[1] = mosaic_size[1];
                     if (mosaic_center[0] + mosaic_size[0] > 100.0f) mosaic_center[0] = 100.0f - mosaic_size[0];
-                    if (mosaic_center[1] + mosaic_size[1] > 100.0f) mosaic_center[1] = 100.0f - mosaic_size[1];
+                    if (mosaic_center[1] + mosaic_size[1] > 150.0f) mosaic_center[1] = 150.0f - mosaic_size[1];
                     x_range[0] = mosaic_center[0] - mosaic_size[0];                             // calculate the dependent variables for the mosaic edges
                     x_range[1] = mosaic_center[0] + mosaic_size[0];
                     y_range[0] = mosaic_center[1] - mosaic_size[1];
@@ -506,7 +506,7 @@ void RenderUI() {
                 }
                 ImGui::SameLine();
                 ImGui::BeginDisabled();
-                ImGui::SliderFloat2("[Y]", y_range, 0.0f, 100.0f, "%.2fmm");
+                ImGui::SliderFloat2("[Y]", y_range, 0.0f, 150.0f, "%.2fmm");
                 ImGui::EndDisabled();
 
 

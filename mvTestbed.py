@@ -62,7 +62,7 @@ def Standard(source_directory, dest_directory):
     # BUILD MOSAIC
     # This code assembles all of the corrected images into a mosaic stored in the "mosaic" directory"
     MosaicFolder = dest_directory + "/mosaic"
-    mvm.AssembleMuvitome(dest_directory + "/flat", MosaicFolder, (10, 0))
+    mvm.AssembleMuvitome(dest_directory + "/flat", MosaicFolder, (20, 0))
     
     #%%
     # ALIGN IMAGES
@@ -70,6 +70,6 @@ def Standard(source_directory, dest_directory):
     offsets = mva.CalculateImageOffsetListY(dest_directory + "/mosaic", N=100, sigma=3)
     mva.ApplyImageOffsetsY(dest_directory + "/mosaic", dest_directory + "/aligned", offsets)
 
-source_directory = "D:/2023_09_11_15_59_41_DILANI"
-dest_directory = "D:/2023_09_11_15_59_41_DILANI_processed" 
+source_directory = "D:/2023_10_06_12_43_43_Thionin_10%_2ndTissue"
+dest_directory = "D:/2023_10_06_12_43_43_Thionin_10%_2ndTissue_processed" 
 Standard(source_directory, dest_directory)
