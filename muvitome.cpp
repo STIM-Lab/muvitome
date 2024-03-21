@@ -468,7 +468,7 @@ void RenderUI() {
                     y_range[1] = mosaic_center[1] + mosaic_size[1];
                     NewSample();
                 }
-                if (ImGui::SliderFloat2("Mosaic Center", mosaic_center, 0.0f, 100.0f)) {              // set the mosaic size
+                if (ImGui::SliderFloat2("Mosaic Center", mosaic_center, 0.0f, 150.0f)) {              // set the mosaic size
                     if (mosaic_center[0] - mosaic_size[0] < 0.0f) mosaic_center[0] = mosaic_size[0];
                     if (mosaic_center[1] - mosaic_size[1] < 0.0f) mosaic_center[1] = mosaic_size[1];
                     if (mosaic_center[0] + mosaic_size[0] > 100.0f) mosaic_center[0] = 100.0f - mosaic_size[0];
