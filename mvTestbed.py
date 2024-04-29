@@ -36,7 +36,7 @@ def Mosaic_FF(source_directory, dest_directory):
 
 
 
-def Standard(source_directory, dest_directory):
+def Standard(source_directory, dest_directory, overlap=(10, 5)):
 
 # specify the source and destination directory
 # (note that the destination directory will by default contain several copies of the files)
@@ -62,14 +62,14 @@ def Standard(source_directory, dest_directory):
     # BUILD MOSAIC
     # This code assembles all of the corrected images into a mosaic stored in the "mosaic" directory"
     MosaicFolder = dest_directory + "/mosaic"
-    mvm.AssembleMuvitome(dest_directory + "/flat", MosaicFolder, (20, 0))
+    mvm.AssembleMuvitome(dest_directory + "/flat", MosaicFolder, overlap)
     
     #%%
     # ALIGN IMAGES
     # This code aligns the images and stores the result as a new image stack in "aligned"
-    offsets = mva.CalculateImageOffsetListY(dest_directory + "/mosaic", N=100, sigma=3)
+    offsets = mva.CalculateImageOffsetListY(dest_directory + "/flat/00001_00001", N=100, sigma=3)
     mva.ApplyImageOffsetsY(dest_directory + "/mosaic", dest_directory + "/aligned", offsets)
 
-source_directory = "D:/2023_10_06_12_43_43_Thionin_10%_2ndTissue"
-dest_directory = "D:/2023_10_06_12_43_43_Thionin_10%_2ndTissue_processed" 
-Standard(source_directory, dest_directory)
+source_directory = "C:/Users/david/Desktop/alignment_test"
+dest_directory = "C:/Users/david/Desktop/alignment_test_processed" 
+Standard(source_directory, dest_directory, overlap=(10, 5))
