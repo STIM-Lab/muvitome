@@ -287,7 +287,11 @@ void ProcessCommandQueue() {
     }
     if (CommandQueue.front() == Command::Move) {
         size_t yi = ImageQueue.size() / frames[0];                                  // calculate the y image index
-        size_t xi = ImageQueue.size() - (yi * frames[0]);                           // calculate the x image index
+        size_t xi = ImageQueue.size() - (yi * frames[0]);
+        if (yi % 2 == 1) {
+            xi = (frames[0] - 1) - xi;
+        }
+        //size_t xi = ImageQueue.size() - (yi * frames[0]);                           // calculate the x image index
         float sx = detector_fov[0] - (detector_fov[0] * detector_overlap[0] * 0.01);
         float sy = detector_fov[1] - (detector_fov[1] * detector_overlap[1] * 0.01);
         float x = x_range[0] + xi * sx;
@@ -929,6 +933,9 @@ int main(int argc, char** argv) {
                 //CALCULATE POSITION pos
                 size_t yi = t / frames[0];                                  // calculate the y image index
                 size_t xi = t - (yi * frames[0]);                           // calculate the x image index
+                if (yi % 2 == 1) {
+                    xi = (frames[0] - 1) - xi;
+                }
                 pos[0] = x_range[0] + xi * image_spacing[0];
                 pos[1] = y_range[0] + yi * image_spacing[1];
                 model = glm::translate(model, glm::vec3((float)(pos[0]), (float)(pos[1]), 0.0f));
