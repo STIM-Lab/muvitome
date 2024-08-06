@@ -215,6 +215,12 @@ std::string TileDirectory(size_t xi, size_t yi) {
     return ss.str();
 }
 
+std::string TileDirectory(size_t i) {
+    std::stringstream ss;
+    ss << std::setfill('0') << std::setw(5) << i;
+    return ss.str();
+}
+
 void SaveMosaic() {
     std::filesystem::path dest_path(ImageFileDirectory());				        // create a path object for the destination directory
 
@@ -227,13 +233,13 @@ void SaveMosaic() {
         size_t yi = i / frames[0];                                  // calculate the y image index
         size_t xi = i - (yi * frames[0]);                           // calculate the x image index
 
-        std::filesystem::path tile_path(ImageFileDirectory() + "\\" + TileDirectory(xi, yi));
+        std::filesystem::path tile_path(ImageFileDirectory() + "\\" + TileDirectory(i));// TileDirectory(xi, yi));
         if (!std::filesystem::exists(tile_path)) {				                    // if the path doesn't exist, create it
             std::error_code ec;
             std::filesystem::create_directory(tile_path, ec);
             std::cout << "Tile Directory Creation: " << ec.message() << std::endl;
         }
-        ImageQueue[i].save(ImageFileDirectory() + "\\" + TileDirectory(xi, yi) + "\\" + ImageFileName());
+        ImageQueue[i].save(ImageFileDirectory() + "\\" + TileDirectory(i) + "\\" + ImageFileName());
     }
     ImageQueue.clear();
     SampleImageCount++;
