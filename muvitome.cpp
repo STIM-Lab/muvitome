@@ -145,8 +145,8 @@ std::string fragment_shader(
     "};\n"
 );
 
-void SaveSettings() {
-    std::ofstream outfile(SettingsFile);
+void SaveSettings(std::string filename) {
+    std::ofstream outfile(filename);
     outfile << RepositoryDirectory << std::endl;
     outfile << stage.getVelocity(2) << std::endl;
     outfile << mosaic_size[0] << std::endl;
@@ -228,6 +228,7 @@ void SaveMosaic() {
         std::error_code ec;
         std::filesystem::create_directory(dest_path, ec);
         std::cout << "Repo Directory Creation: " << ec.message() << std::endl;
+        SaveSettings(ImageFileDirectory() + "\\" + "sample_settings.txt");
     }
     for (size_t i = 0; i < ImageQueue.size(); i++) {
         size_t yi = i / frames[0];                                  // calculate the y image index
@@ -386,7 +387,7 @@ void RenderUI() {
                 {
                     RepositoryDirectory = ImGuiFileDialog::Instance()->GetCurrentPath();
                     NewSample();
-                    SaveSettings();
+                    SaveSettings(SettingsFile);
                 }
                 // close
                 ImGuiFileDialog::Instance()->Close();
@@ -966,7 +967,7 @@ int main(int argc, char** argv) {
     glfwDestroyWindow(window);                                      // Destroy the GLFW rendering window
     glfwTerminate();                                                // Terminate GLFW
 
-    SaveSettings();
+    SaveSettings(SettingsFile);
 
     camera.Destroy();
     stage.Destroy();
