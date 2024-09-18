@@ -15,6 +15,7 @@ def TiffConvert(source_directory, dest_directory):
 
     # load the image stack
     frame_directories = [f for f in listdir(source_directory) if isdir(join(source_directory, f))]
+    frame_directories.sort()
     
     frame_num = 1
     for frame_directory in frame_directories:
@@ -25,7 +26,7 @@ def TiffConvert(source_directory, dest_directory):
         
         # load the image stack
         image_files = [f for f in listdir(dir_input) if isfile(join(dir_input, f))]
-        
+        image_files.sort()
         image_list = []
         for fi in tqdm(range(len(image_files))):
             image_list.append(PIL.Image.open(dir_input + "/" + image_files[fi]))
